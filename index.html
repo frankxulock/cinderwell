@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<meta name="color-scheme" content="dark">
+<title>烬井</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <canvas id="cv"></canvas>
+  <header class="hud hidden" id="hud">
+    <div class="hud-row">
+      <span id="floor-label">第 1 层</span>
+      <span class="oils" id="oils"></span>
+      <button type="button" class="icon-btn" id="pause-btn" aria-label="暂停">暂停</button>
+    </div>
+    <div class="hud-row sub">
+      <span id="res"></span>
+      <span id="score">0</span>
+    </div>
+    <p class="toast hidden" id="toast"></p>
+  </header>
+  <div class="sticks hidden" id="sticks">
+    <div class="stick" id="stick-l" data-stick="l"><div class="knob"></div></div>
+    <button type="button" class="flare" id="flare-btn">焰弹</button>
+    <div class="stick" id="stick-r" data-stick="r"><div class="knob"></div></div>
+  </div>
+  <div class="overlay" id="overlay">
+    <section class="card" id="screen-menu">
+      <p class="eyebrow" id="badge">灯塔</p>
+      <h1>烬井</h1>
+      <p class="lead">守灯人下井。清掉房间里的东西，门才会开。三层之后，窑主在等。</p>
+      <p class="meta-line"><span id="menu-best">最高 0</span> · <span id="menu-ash">灰烬 0</span></p>
+      <div class="actions">
+        <button type="button" class="btn primary" id="btn-continue">继续下井</button>
+        <button type="button" class="btn primary" id="btn-start">开始下井</button>
+        <button type="button" class="btn" id="btn-shop">灯塔商店</button>
+        <button type="button" class="btn ghost" id="btn-help">怎么操作</button>
+      </div>
+    </section>
+    <section class="card hidden" id="screen-shop">
+      <h2>灯塔商店</h2>
+      <p class="meta-line" id="shop-ash">灰烬 0</p>
+      <div id="shop-list"></div>
+      <button type="button" class="btn" id="shop-back">返回</button>
+    </section>
+    <section class="card hidden" id="screen-help">
+      <h2>怎么操作</h2>
+      <ul class="help">
+        <li>左边移动，右边瞄准。瞄准时会自己喷出火花。</li>
+        <li>电脑用 WASD 移动，鼠标或方向键瞄准射击，空格放焰弹。</li>
+        <li>焰弹伤这一间的敌人，并清掉飞过来的火星。</li>
+        <li>火印用来开库房。货摊上的东西用烬买。</li>
+        <li>清完战斗房，门就开。窑主倒下后，走上井梯去下一层。</li>
+      </ul>
+      <button type="button" class="btn" id="help-back">返回</button>
+    </section>
+    <section class="card hidden" id="screen-pause">
+      <h2>灯火暂歇</h2>
+      <p class="lead" id="pause-text">这一局还在。</p>
+      <div class="actions">
+        <button type="button" class="btn primary" id="btn-resume">继续</button>
+        <button type="button" class="btn ghost" id="btn-quit">回灯塔</button>
+      </div>
+    </section>
+    <section class="card hidden" id="screen-revive">
+      <h2>灯快灭了</h2>
+      <p class="lead">看一段广告，灯油加满，原地再来。每局一次。</p>
+      <div class="actions">
+        <button type="button" class="btn primary" id="btn-revive">看广告复活</button>
+        <button type="button" class="btn ghost" id="btn-give-up">就到这里</button>
+      </div>
+    </section>
+    <section class="card hidden" id="screen-end">
+      <h2 id="end-title">灯灭了</h2>
+      <p class="lead" id="end-text"></p>
+      <div class="actions">
+        <button type="button" class="btn primary" id="end-double">看广告灰烬翻倍</button>
+        <button type="button" class="btn primary" id="end-again">再下一局</button>
+        <button type="button" class="btn ghost" id="end-menu">回灯塔</button>
+      </div>
+    </section>
+  </div>
+</div>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+<script src="build-info.js"></script>
+<script src="sdk/tgmp-sdk.js"></script>
+<script src="ads.js"></script>
+<script src="logic.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
