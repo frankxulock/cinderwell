@@ -730,6 +730,7 @@
       settled: false,
       events: [],
       ease: ease,
+      bestAtStart: (meta && meta.bestFloor) || 0,
       clears: 0,
       hurtCount: 0,
       guideDone: guiding ? 0 : 1,
@@ -976,6 +977,11 @@
     });
   }
 
+  function shotDamage(state, extra) {
+    var bonus = state.pact === 'hunter' ? 1 : 0;
+    return (state.damage || 1) + bonus + (extra || 0);
+  }
+
   function fire(state) {
     var kind = WEAPONS[state.weapon] ? state.weapon : 'spark';
     var n = state.shots || 1;
@@ -984,23 +990,23 @@
     if (kind === 'lance') {
       for (i = 0; i < n; i++) {
         var la = n === 1 ? base : base + (i - (n - 1) / 2) * 0.08;
-        pushShot(state, la, 470, 6, state.damage + 1, state.pierce + 3, 0.62, 'lance');
+        pushShot(state, la, 470, 6, shotDamage(state, 1), state.pierce + 3, 0.62, 'lance');
       }
     } else if (kind === 'fan') {
       var fanN = n + 3;
       for (i = 0; i < fanN; i++) {
-        pushShot(state, base + (i - (fanN - 1) / 2) * 0.34, 250, 3, state.damage, state.pierce + 1, 0.36, 'fan');
+        pushShot(state, base + (i - (fanN - 1) / 2) * 0.34, 250, 3, shotDamage(state, 0), state.pierce + 1, 0.36, 'fan');
       }
     } else if (kind === 'loop') {
       for (i = 0; i < n; i++) {
         var oa = n === 1 ? base : base + (i - (n - 1) / 2) * 0.2;
-        pushShot(state, oa, 240, 5, state.damage, state.pierce + 1, 1.25, 'loop');
+        pushShot(state, oa, 240, 5, shotDamage(state, 0), state.pierce + 1, 1.25, 'loop');
       }
     } else {
       var spread = 0.22;
       for (i = 0; i < n; i++) {
         var a = n === 1 ? base : base + (i - (n - 1) / 2) * spread;
-        pushShot(state, a, 340, 4, state.damage + (state.aiSpark ? 1 : 0), state.pierce + 1, 0.85, 'spark');
+        pushShot(state, a, 340, 4, shotDamage(state, state.aiSpark ? 1 : 0), state.pierce + 1, 0.85, 'spark');
       }
     }
     state.events.push('shoot');
@@ -1350,7 +1356,7 @@
     if (ratio <= 0.34) heat = 0.42;
     else if (ratio <= 0.5) heat = 0.62;
     else if (ratio < 0.85 && hurt >= 2) heat = 0.78;
-    if (clears >= 2 && hurt === 0 && ratio >= 0.99 && (state.ease || 0) <= 1) heat = 1.12;
+    if (clears >= 2 && hurt === 0 && ratio >= 0.99 && runEase(state) <= 1) heat = 1.12;
     if ((state.floor || 1) >= 4 && heat < 0.85) heat = 0.85;
     return heat;
   }
@@ -1366,7 +1372,7 @@
     if ((state.floor || 1) >= 4 && heat > 0.7) return;
     if (heat > 0.93 && heat < 1.05) return;
     var list = room.enemies || [];
-    if (heat >= 1.08 && (state.ease || 0) <= 1 && (state.floor || 1) <= 2 && kind !== 'boss' && list.length > 0 && list.length < 3) {
+    if (heat >= 1.08 && runEase(state) <= 1 && (state.floor || 1) <= 2 && kind !== 'boss' && list.length > 0 && list.length < 3) {
       var extra = makeEnemy('mote', ROOM_W / 2 + 54, ROOM_H / 2 + 36, state.floor || 1, 500 + room.id);
       extra.speed = Math.round(extra.speed * 0.9);
       list.push(extra);
@@ -1797,11 +1803,12 @@
     var reached = state.floor || 1;
     var deepened = reached > (meta.bestFloor || 0);
     if (deepened) meta.bestFloor = reached;
+    var progressed = state.bestAtStart != null && reached >= 2 && reached > state.bestAtStart;
     if (state.status === 'dead') {
       meta.deaths = (meta.deaths || 0) + 1;
-      if (deepened && reached >= 2) meta.deathStreak = 0;
+      if ((deepened && reached >= 2) || progressed) meta.deathStreak = 0;
       else meta.deathStreak = (meta.deathStreak || 0) + 1;
-    } else if (deepened) meta.deathStreak = 0;
+    } else if (deepened || progressed) meta.deathStreak = 0;
     if (state.guideDone) meta.guideDone = 1;
     return gained;
   }
@@ -1856,9 +1863,8 @@
 
   function applyPact(state) {
     var keys = ['thirst', 'leech', 'hunter', 'steady'];
-    if ((state.ease || 0) <= 1 && (state.floor || 1) === 1) keys = ['steady', 'leech', 'steady', 'leech'];
+    if (runEase(state) <= 1 && (state.floor || 1) === 1) keys = ['steady', 'leech', 'steady', 'leech'];
     state.pact = keys[Math.floor(roll(state) * keys.length)];
-    if (state.pact === 'hunter') state.damage = Math.min(6, (state.damage || 1) + 1);
   }
 
   function steerDash(state, input, dt) {

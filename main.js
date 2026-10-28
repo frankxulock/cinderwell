@@ -1561,26 +1561,46 @@
   function bind() {
     bindStick($('stick-l'), 'l');
     bindStick($('stick-r'), 'r');
-    T.on($('flare-btn'), 'pointerdown', function (e) {
-      ensureAudio();
-      flareHeld = true;
-      e.preventDefault();
-    });
-    T.on($('flare-btn'), 'pointerup', function () { flareHeld = false; });
-    T.on($('flare-btn'), 'pointercancel', function () { flareHeld = false; });
-    T.on($('dash-btn'), 'pointerdown', function (e) {
-      ensureAudio();
-      dashHeld = true;
-      e.preventDefault();
-    });
-    T.on($('dash-btn'), 'pointerup', function () { dashHeld = false; });
-    T.on($('dash-btn'), 'pointercancel', function () { dashHeld = false; });
+    function holdButton(el, setDown) {
+      T.on(el, 'pointerdown', function (e) {
+        ensureAudio();
+        setDown(true);
+        try { el.setPointerCapture(e.pointerId); } catch (err) {}
+        e.preventDefault();
+      });
+      function release(e) {
+        if (e && e.pointerId != null && el.hasPointerCapture && el.hasPointerCapture(e.pointerId)) {
+          try { el.releasePointerCapture(e.pointerId); } catch (err) {}
+        }
+        setDown(false);
+      }
+      T.on(el, 'pointerup', release);
+      T.on(el, 'pointercancel', release);
+    }
+    holdButton($('flare-btn'), function (down) { flareHeld = down; });
+    holdButton($('dash-btn'), function (down) { dashHeld = down; });
     T.on(window, 'keydown', function (e) {
       keys[e.code] = true;
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.code) >= 0) e.preventDefault();
       if (e.code === 'Escape' && screen === 'play') { localPaused = true; show('pause'); persist(); }
     });
     T.on(window, 'keyup', function (e) { keys[e.code] = false; });
+    T.on(window, 'blur', function () {
+      Object.keys(keys).forEach(function (code) { keys[code] = false; });
+      flareHeld = false;
+      dashHeld = false;
+      pointer.down = false;
+      sticks.l.x = 0;
+      sticks.l.y = 0;
+      sticks.l.id = null;
+      sticks.r.x = 0;
+      sticks.r.y = 0;
+      sticks.r.id = null;
+      ['stick-l', 'stick-r'].forEach(function (id) {
+        var knob = $(id) && $(id).querySelector('.knob');
+        if (knob) knob.style.transform = 'none';
+      });
+    });
     T.on(cv, 'pointerdown', function (e) {
       if (e.target !== cv) return;
       ensureAudio();
