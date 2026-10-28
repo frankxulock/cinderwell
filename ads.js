@@ -1,69 +1,69 @@
-/* 烬井广告：Adsgram 激励视频。在 Telegram 外或没配广告位时，用一个假广告走通流程。 */
+/* 烬井激励广告。只接 Adsgram 的 Reward：看完才发奖，跳过、失败、没填广告位都不发。
+   广告位在 index.html 的 CINDERWELL_ADS 里填，revive 和 double 各一个 Block ID。 */
 (function () {
   'use strict';
 
-  // 在 https://partner.adsgram.ai 创建激励广告位后，把 Block ID 填在这里。
-  var BLOCK_ID = '';
-  // 上线前改成 false；为 true 时 Adsgram 只放测试广告。
-  var DEBUG = true;
-
-  var controller = null;
+  var cfg = window.CINDERWELL_ADS || {};
+  var blocks = {
+    revive: digits(cfg.revive || cfg.blockId),
+    double: digits(cfg.double || cfg.blockId)
+  };
+  var debug = !!cfg.debug;
+  var controllers = {};
   var busy = false;
 
-  function inTelegram() {
-    var tg = window.Telegram && window.Telegram.WebApp;
-    return !!(tg && tg.initData);
+  function digits(value) {
+    var text = String(value || '').trim();
+    return /^\d+$/.test(text) ? text : '';
   }
 
-  function getController() {
-    if (controller) return controller;
-    if (!BLOCK_ID || !window.Adsgram || !inTelegram()) return null;
-    try {
-      controller = window.Adsgram.init({ blockId: BLOCK_ID, debug: DEBUG });
-    } catch (e) {
-      controller = null;
+  function controller(placement) {
+    var id = blocks[placement] || '';
+    if (!id || !window.Adsgram || typeof window.Adsgram.init !== 'function') return null;
+    if (!controllers[id]) {
+      try {
+        controllers[id] = window.Adsgram.init({
+          blockId: id,
+          debug: debug,
+          debugBannerType: 'RewardedVideo'
+        });
+      } catch (e) {
+        controllers[id] = null;
+      }
     }
-    return controller;
+    return controllers[id] || null;
   }
 
-  function fakeAd() {
-    return new Promise(function (resolve) {
-      var box = document.createElement('div');
-      box.className = 'fake-ad';
-      box.innerHTML = '<p>测试广告</p><p class="fake-ad-count">3</p>' +
-        '<button type="button" class="btn ghost">跳过</button>';
-      document.body.appendChild(box);
-      var left = 3;
-      var timer = window.setInterval(function () {
-        left -= 1;
-        box.querySelector('.fake-ad-count').textContent = String(left);
-        if (left <= 0) done(true);
-      }, 1000);
-      box.querySelector('button').addEventListener('click', function () { done(false); });
-      function done(ok) {
-        window.clearInterval(timer);
-        box.remove();
-        resolve(ok);
+  function prepare() {
+    ['revive', 'double'].forEach(function (placement) {
+      var ad = controller(placement);
+      if (ad && typeof ad.load === 'function') {
+        try { ad.load(); } catch (e) {}
       }
     });
   }
 
-  // 放一条激励广告。看完返回 true，跳过或出错返回 false。
-  function rewarded() {
-    if (busy) return Promise.resolve(false);
+  function rewarded(placement) {
+    placement = blocks[placement] ? placement : '';
+    if (!placement) return Promise.resolve({ ok: false, reason: 'unconfigured' });
+    if (busy) return Promise.resolve({ ok: false, reason: 'busy' });
+    var ad = controller(placement);
+    if (!ad || typeof ad.show !== 'function') return Promise.resolve({ ok: false, reason: 'missing' });
     busy = true;
-    var ad = getController();
-    var p = ad
-      ? ad.show().then(function (r) { return !!(r && r.done); }, function () { return false; })
-      : fakeAd();
-    return p.then(function (ok) {
+    return ad.show().then(function (result) {
       busy = false;
-      return ok;
+      return { ok: !!(result && result.done !== false), reason: 'done' };
+    }, function (result) {
+      busy = false;
+      var skipped = result && result.done === false && !result.error;
+      return { ok: false, reason: skipped ? 'skip' : 'error' };
     });
   }
 
   window.CinderwellAds = {
+    prepare: prepare,
     rewarded: rewarded,
-    live: function () { return !!getController(); }
+    configured: function (placement) { return !!blocks[placement]; },
+    live: function () { return !!(blocks.revive || blocks.double); }
   };
 })();

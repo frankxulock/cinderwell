@@ -1,0 +1,10 @@
+{
+  "gameCode": "cinderwell",
+  "buildId": "v1.0.0",
+  "version": "1.0.0",
+  "source": "cinderwell",
+  "buildInfo": {
+    "label": "灯塔"
+  },
+  "sha256": "6c77b93519134fea0ec9ec138dcaeef6b6897c80c5d16b5b1f8ac84f9b9b9733"
+}

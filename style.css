@@ -57,7 +57,23 @@ canvas {
   width: 12px; height: 16px; border-radius: 6px 6px 5px 5px;
   background: #3a2a33; border: 1px solid #6a5348;
 }
-.oil.on { background: linear-gradient(#ffb15a, #e36a3a); border-color: #ffd089; }
+.oil.on {
+  background: linear-gradient(#ffb15a, #e36a3a);
+  border-color: #ffd089;
+  animation: oilpulse 1.8s ease-in-out infinite;
+}
+@keyframes oilpulse {
+  50% { transform: scale(1.08); filter: brightness(1.2); }
+}
+.toast { animation: toastin 0.28s ease; }
+@keyframes toastin {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.flare { animation: flarepulse 1.6s ease-in-out infinite; }
+@keyframes flarepulse {
+  50% { transform: scale(1.06); }
+}
 .icon-btn, .flare, .btn {
   pointer-events: auto;
   border: 1px solid var(--line);
@@ -72,6 +88,16 @@ canvas {
   color: var(--amber-2);
   font-size: 14px;
   text-shadow: 0 1px 2px #000;
+}
+.gear {
+  margin: 2px 0 0;
+  min-height: 16px;
+  color: var(--amber-2);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sticks {
@@ -113,6 +139,20 @@ canvas {
   font-weight: 700;
   color: #2a120c;
 }
+.dash {
+  pointer-events: auto;
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  margin: 0 8px 28px;
+  background: radial-gradient(circle at 40% 35%, #e7f4ff, #7eb6e6 62%, #2a4e72);
+  border: 0;
+  font-weight: 700;
+  color: #102033;
+}
+.oils.low .oil.on { animation: heartbeat 0.45s ease-in-out infinite; }
+@keyframes heartbeat {
+  50% { transform: scale(1.28); filter: brightness(1.5); }
+}
 
 .overlay {
   position: absolute;
@@ -133,6 +173,11 @@ canvas {
   padding: 22px 20px 18px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
   pointer-events: auto;
+  animation: cardin 0.34s cubic-bezier(.2, .8, .2, 1);
+}
+@keyframes cardin {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+  to { opacity: 1; transform: none; }
 }
 .card h1 { margin: 0; font-size: 48px; letter-spacing: 0.12em; font-weight: 700; }
 .card h2 { margin: 0 0 8px; letter-spacing: 0.08em; }
@@ -140,7 +185,9 @@ canvas {
 .lead { color: var(--muted); line-height: 1.55; }
 .meta-line { color: var(--amber-2); }
 .actions { display: flex; flex-direction: column; gap: 10px; }
-.btn { width: 100%; min-height: 46px; border-radius: 14px; }
+.btn { width: 100%; min-height: 46px; border-radius: 14px; transition: transform 0.12s ease, filter 0.12s ease; }
+.btn:active { transform: scale(0.98); }
+.ad-note { min-height: 1.2em; margin: 0 0 8px; color: var(--amber-2); font-size: 13px; }
 .btn.primary { background: linear-gradient(#ffd089, #e7a04a); color: #2a1608; border-color: transparent; font-weight: 700; }
 .btn.ghost { background: transparent; }
 .help { margin: 0 0 16px; padding-left: 18px; color: var(--muted); line-height: 1.55; }
@@ -155,23 +202,54 @@ canvas {
 @media (pointer: fine) {
   .sticks { display: none; }
 }
+@media (prefers-reduced-motion: reduce) {
+  .oil.on, .toast, .flare, .card, .oils.low .oil.on { animation: none; }
+  .btn { transition: none; }
+}
+
 @media (max-height: 520px) {
   .card h1 { font-size: 36px; }
   .sticks { height: calc(96px + var(--safe-b)); }
   .stick { width: 84px; height: 84px; }
 }
 
-.fake-ad {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: rgba(8, 6, 10, 0.94);
-  color: var(--muted);
+.promo {
+  display: block;
+  width: 100%;
+  margin: 8px 0 4px;
+  padding: 8px 2px 4px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--amber-2);
+  font-size: 13px;
 }
-.fake-ad .fake-ad-count { font-size: 48px; color: var(--amber-2); margin: 0; }
-.fake-ad .btn { width: auto; padding: 0 24px; }
+.promo .bar { margin-top: 6px; }
+  height: 8px;
+  border-radius: 99px;
+  background: #2a2430;
+  overflow: hidden;
+  margin: 8px 0;
+}
+.bar > i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #e7a04a, #ffd089);
+}
+.squad-line {
+  display: block;
+  margin: 10px 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.squad-line input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.25);
+}

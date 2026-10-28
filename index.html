@@ -6,6 +6,10 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="color-scheme" content="dark">
 <title>烬井</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="🎮 [新星 TON 游戏] 诚邀您加入我们的生态探索之旅！">
+<meta property="og:description" content="🚀 早期参与者可获得专属的游戏内积分与早期测试者徽章。点击即玩！">
+<meta property="og:image" content="https://frankxulock.github.io/cinderwell/art/cover-640x360.jpg">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,10 +25,13 @@
       <span id="res"></span>
       <span id="score">0</span>
     </div>
+    <p class="gear" id="gear"></p>
+    <p class="gear law" id="law"></p>
     <p class="toast hidden" id="toast"></p>
   </header>
   <div class="sticks hidden" id="sticks">
     <div class="stick" id="stick-l" data-stick="l"><div class="knob"></div></div>
+    <button type="button" class="dash" id="dash-btn">冲</button>
     <button type="button" class="flare" id="flare-btn">焰弹</button>
     <div class="stick" id="stick-r" data-stick="r"><div class="knob"></div></div>
   </div>
@@ -32,13 +39,45 @@
     <section class="card" id="screen-menu">
       <p class="eyebrow" id="badge">灯塔</p>
       <h1>烬井</h1>
-      <p class="lead">守灯人下井。清掉房间里的东西，门才会开。三层之后，窑主在等。</p>
+      <p class="lead">井没有底。每三层换一种窑主，越往下血越厚。</p>
       <p class="meta-line"><span id="menu-best">最高 0</span> · <span id="menu-ash">灰烬 0</span></p>
+      <button type="button" class="promo" id="btn-menu-growth">
+        <span id="menu-growth-label">新星里程碑 2/6</span>
+        <span class="bar"><i id="menu-growth-fill"></i></span>
+      </button>
       <div class="actions">
         <button type="button" class="btn primary" id="btn-continue">继续下井</button>
         <button type="button" class="btn primary" id="btn-start">开始下井</button>
+        <button type="button" class="btn" id="btn-menu-invite">邀请好友</button>
         <button type="button" class="btn" id="btn-shop">灯塔商店</button>
+        <button type="button" class="btn" id="btn-growth">新星里程碑</button>
         <button type="button" class="btn ghost" id="btn-help">怎么操作</button>
+      </div>
+    </section>
+    <section class="card hidden" id="screen-growth">
+      <h2>新星里程碑</h2>
+      <p class="lead" id="growth-copy">进来就有基础进度。做完剩下的任务，领取早期测试者星标。</p>
+      <div class="bar" aria-hidden="true"><i id="growth-fill"></i></div>
+      <p class="meta-line" id="growth-points">2 / 8</p>
+      <ul class="help" id="growth-tasks"></ul>
+      <label class="squad-line">常待的公开群
+        <input id="squad-input" maxlength="32" placeholder="@GroupUsername" autocomplete="off">
+      </label>
+      <p class="meta-line" id="squad-board"></p>
+      <div class="actions">
+        <button type="button" class="btn primary" id="btn-invite">邀请好友</button>
+        <button type="button" class="btn" id="btn-channel">打开官方频道</button>
+        <button type="button" class="btn" id="btn-claim">领取星标</button>
+        <button type="button" class="btn" id="btn-squad">加入这个群的公会</button>
+        <button type="button" class="btn ghost" id="growth-back">返回</button>
+      </div>
+    </section>
+    <section class="card hidden" id="screen-rally">
+      <h2>应援号召</h2>
+      <p class="lead" id="rally-text"></p>
+      <div class="actions">
+        <button type="button" class="btn primary" id="btn-rally">发给群友</button>
+        <button type="button" class="btn ghost" id="rally-back">先继续</button>
       </div>
     </section>
     <section class="card hidden" id="screen-shop">
@@ -51,10 +90,19 @@
       <h2>怎么操作</h2>
       <ul class="help">
         <li>左边移动，右边瞄准。瞄准时会自己喷出火花。</li>
-        <li>电脑用 WASD 移动，鼠标或方向键瞄准射击，空格放焰弹。</li>
+        <li>电脑用 WASD 移动，Shift 或 K 冲刺，鼠标或方向键瞄准射击，空格放焰弹。</li>
+        <li>打中会跳数字。暴击停一下，灯桶被打炸开会伤周围。</li>
+        <li>每间战斗房规矩不同：虫巢、脆窑、矿脉、单挑、余潮。带圈的是精英。</li>
+        <li>灯蛾会绕圈再扑，钟壳会敲出一圈火星。井约会改变这一层的捡取、回血或伤害。</li>
         <li>焰弹伤这一间的敌人，并清掉飞过来的火星。</li>
-        <li>火印用来开库房。货摊上的东西用烬买。</li>
-        <li>清完战斗房，门就开。窑主倒下后，走上井梯去下一层。</li>
+        <li>灯台上有一枚火印，用来开库房。货摊上的东西用烬买。</li>
+        <li>第二层起地上有烫人的裂隙，越深越多。灰傀会先缩一下，再冲过来。</li>
+        <li>井没有底。窑主、钟匠、蛾后、烬王每三层轮一次，越深血越厚，身边的怪也更多。</li>
+        <li>怪物潮要连清几波。福利房随便拿，两把武器里选一把：芯火、烬矛、扇烬、回灯。</li>
+        <li>天赋只能选一个。赌桌踩上去，有赢有输。</li>
+        <li>新星里程碑用邀请和分享换游戏内积分。领到的是星标徽章，多一发开局焰弹，不能提现。</li>
+        <li>试炼更难，清完必有道具。灯龛的两件东西只能拿一件。</li>
+        <li>火花能打掉飞来的火星。短时间连杀会掉连烬。灰壳死时会炸开。</li>
       </ul>
       <button type="button" class="btn" id="help-back">返回</button>
     </section>
@@ -68,7 +116,8 @@
     </section>
     <section class="card hidden" id="screen-revive">
       <h2>灯快灭了</h2>
-      <p class="lead">看一段广告，灯油加满，原地再来。每局一次。</p>
+      <p class="lead">看完一段广告，灯油加满，原地再来。每局一次。没看完就没有奖励。</p>
+      <p class="ad-note" id="revive-note"></p>
       <div class="actions">
         <button type="button" class="btn primary" id="btn-revive">看广告复活</button>
         <button type="button" class="btn ghost" id="btn-give-up">就到这里</button>
@@ -77,20 +126,36 @@
     <section class="card hidden" id="screen-end">
       <h2 id="end-title">灯灭了</h2>
       <p class="lead" id="end-text"></p>
+      <p class="ad-note" id="end-note"></p>
       <div class="actions">
         <button type="button" class="btn primary" id="end-double">看广告灰烬翻倍</button>
         <button type="button" class="btn primary" id="end-again">再下一局</button>
+        <button type="button" class="btn" id="end-invite">邀请好友，领星标</button>
         <button type="button" class="btn ghost" id="end-menu">回灯塔</button>
       </div>
     </section>
   </div>
 </div>
+<script>
+window.CINDERWELL_TG = {
+  bot: 'CakeLinkPlayBot',
+  app: 'cinderwell',
+  publicUrl: 'https://frankxulock.github.io/cinderwell/',
+  channel: ''
+};
+window.CINDERWELL_ADS = {
+  revive: '',
+  double: '',
+  debug: false
+};
+</script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <script src="build-info.js"></script>
 <script src="sdk/tgmp-sdk.js"></script>
 <script src="ads.js"></script>
 <script src="logic.js"></script>
+<script src="growth.js"></script>
 <script src="main.js"></script>
 </body>
 </html>
