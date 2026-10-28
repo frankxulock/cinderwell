@@ -29,6 +29,7 @@
     <p class="gear law" id="law"></p>
     <p class="toast hidden" id="toast"></p>
   </header>
+  <p class="coach hidden" id="coach"></p>
   <div class="sticks hidden" id="sticks">
     <div class="stick" id="stick-l" data-stick="l"><div class="knob"></div></div>
     <button type="button" class="dash" id="dash-btn">冲</button>
@@ -39,7 +40,7 @@
     <section class="card" id="screen-menu">
       <p class="eyebrow" id="badge">灯塔</p>
       <h1>烬井</h1>
-      <p class="lead">井没有底。每三层换一种窑主，越往下血越厚。</p>
+      <p class="lead" id="menu-lead">井没有底。每三层换一种窑主，越往下血越厚。</p>
       <p class="meta-line"><span id="menu-best">最高 0</span> · <span id="menu-ash">灰烬 0</span></p>
       <button type="button" class="promo" id="btn-menu-growth">
         <span id="menu-growth-label">新星里程碑 2/6</span>
@@ -89,6 +90,8 @@
     <section class="card hidden" id="screen-help">
       <h2>怎么操作</h2>
       <ul class="help">
+        <li>第一局会按顺序教：移动、瞄准、冲刺、捡烬、焰弹。提示出现在画面下方。</li>
+        <li>前两层看你的战绩和当下灯油。连着倒在井口会放轻；灯油见底，下一间也会放轻。打得顺，房间会再加紧。</li>
         <li>左边移动，右边瞄准。瞄准时会自己喷出火花。</li>
         <li>电脑用 WASD 移动，Shift 或 K 冲刺，鼠标或方向键瞄准射击，空格放焰弹。</li>
         <li>打中会跳数字。暴击停一下，灯桶被打炸开会伤周围。</li>

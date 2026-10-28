@@ -56,6 +56,7 @@
     if (name === 'shop') paintShop();
     if (name === 'growth') paintGrowth();
     if (name === 'pause') $('pause-text').textContent = pauseCopy();
+    if (name !== 'play' && $('coach')) $('coach').classList.add('hidden');
     var card = $('screen-' + name);
     if (card && !card.classList.contains('hidden')) {
       card.style.animation = 'none';
@@ -81,6 +82,17 @@
     ensureGrowth();
     $('menu-best').textContent = '最高 ' + (meta.best || 0);
     $('menu-ash').textContent = '灰烬 ' + (meta.ash || 0);
+    var ease = L.easeOf(meta);
+    var teaching = ease <= 1 && !meta.guideDone;
+    var lead = $('menu-lead');
+    if (lead) {
+      lead.textContent = teaching
+        ? '第一局会教你走、瞄准和冲刺。前两层按灯油和战绩放轻，打顺了再加紧。'
+        : (ease <= 1
+          ? '前两层仍按灯油和战绩调整。连着倒下会放轻，打得顺就加紧。'
+          : '井没有底。每三层换一种窑主，越往下血越厚。');
+    }
+    if ($('btn-start')) $('btn-start').textContent = teaching ? '开始教学局' : '开始下井';
     $('btn-continue').classList.toggle('hidden', !hasRun());
     var got = G.points(meta.growth);
     var goal = milestoneGoal();
@@ -103,6 +115,7 @@
   }
 
   function persist() {
+    if (run && run.guideDone) meta.guideDone = 1;
     T.saveProgress({
       meta: meta,
       run: run && run.status === 'play' ? L.snapshot(run) : null
@@ -150,7 +163,7 @@
       else if (e === 'crit') blip(980, 0.06, 'square', 0.03);
       else if (e === 'dash') blip(240, 0.07, 'sawtooth', 0.025);
       else if (e === 'blast' || e === 'toll') blip(110, 0.12, 'sawtooth', 0.04);
-      else if (e === 'wave' || e === 'law' || e === 'split') blip(540, 0.1, 'triangle', 0.035);
+      else if (e === 'wave' || e === 'law' || e === 'split' || e === 'guide' || e === 'ease') blip(540, 0.1, 'triangle', 0.035);
       else if (e === 'kill') blip(320, 0.05, 'square', 0.02);
     }
   }
@@ -190,8 +203,9 @@
     ensureAudio();
     ended = false;
     if (fresh || !hasRun()) {
+      meta.runs = (meta.runs || 0) + 1;
       run = L.createRun((Math.random() * 0xffffffff) >>> 0 || 1, meta);
-      run.toast = L.floorName(1) + ' · ' + (L.pactName(run.pact) || '第 1 层');
+      run.toast = (run.guide && run.guide.on ? '教学局 · ' : '') + L.floorName(1) + ' · ' + (L.pactName(run.pact) || '第 1 层');
       run.toastT = 1.6;
     }
     localPaused = false;
@@ -398,6 +412,11 @@
         feel.ghosts = {};
         fx.fade = 0.26;
       }
+      if ((run.floor || 1) > (meta.bestFloor || 0)) {
+        meta.bestFloor = run.floor;
+        if (run.floor >= 2) meta.deathStreak = 0;
+        persist();
+      }
       noteAction(before, roomBefore);
       if (run.status === 'win') finish('win');
       else if (run.status === 'dead') {
@@ -444,6 +463,13 @@
         toast.style.animation = '';
       }
     } else toast.classList.add('hidden');
+    var coach = $('coach');
+    if (coach) {
+      var tip = run.guide && run.guide.on && run.guideText ? run.guideText : '';
+      coach.classList.toggle('hidden', !tip);
+      coach.classList.toggle('desk', $('sticks').classList.contains('hidden'));
+      if (tip) setText('coach', tip);
+    }
   }
 
   function paint() {
@@ -962,6 +988,17 @@
   }
 
   function drawEnemy(e) {
+    var roomNow = run.rooms[run.roomId];
+    if (roomNow && roomNow.lesson && e.hp > 0 && run.guide && run.guide.step === 'aim') {
+      var mark = shown('e' + e.id, e.x, e.y);
+      ctx2.save();
+      ctx2.strokeStyle = 'rgba(255, 208, 137, 0.9)';
+      ctx2.lineWidth = 2;
+      ctx2.beginPath();
+      ctx2.arc(mark.x, mark.y, e.r + 12 + Math.sin(fx.t * 5) * 2, 0, Math.PI * 2);
+      ctx2.stroke();
+      ctx2.restore();
+    }
     var bob = fx.reduced ? 0 : Math.sin(fx.t * (e.kind === 'mote' ? 4.6 : 2.3) + e.id * 1.7) * (e.kind === 'mote' ? 3.6 : 1.3);
     var wind = ((e.kind === 'spit' || e.kind === 'warden' || e.kind === 'smith') && e.cd > 0 && e.cd < 0.4) || ((e.kind === 'ash' || e.kind === 'king') && e.wind > 0);
     var sc = wind ? 1 + (0.4 - e.cd) * 0.65 : 1;
@@ -1685,7 +1722,15 @@
       cv = $('cv');
       ctx2 = cv.getContext('2d');
       var saved = ctx && ctx.progress;
-      if (saved && saved.meta) meta = Object.assign(L.newMeta(), saved.meta);
+      if (saved && saved.meta) {
+      var tracked = Object.prototype.hasOwnProperty.call(saved.meta, 'bestFloor') || Object.prototype.hasOwnProperty.call(saved.meta, 'runs');
+      meta = Object.assign(L.newMeta(), saved.meta);
+      if (!tracked && ((meta.best || 0) > 0 || (meta.ash || 0) > 0)) {
+        meta.bestFloor = Math.max(meta.bestFloor || 0, 3);
+        meta.guideDone = 1;
+        meta.runs = Math.max(meta.runs || 0, 3);
+      }
+    }
       run = saved && saved.run ? L.restore(saved.run) : null;
       host = ctx || null;
       loadGrowthBook();

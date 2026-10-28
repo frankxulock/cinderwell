@@ -53,7 +53,18 @@
     glass: '脆窑 · 敌人更脆更快',
     vein: '矿脉 · 有烬，还有会炸的灯桶',
     duel: '单挑 · 一个更硬的敌人',
-    wave: '余潮 · 清完还会再来一波'
+    wave: '余潮 · 清完还会再来一波',
+    hearth: '暖窑 · 敌人更慢，清完回一滴油'
+  };
+
+  var GUIDE = {
+    move: '左边走，电脑用 WASD。走到门口进入下一间。',
+    aim: '右边瞄准，或按住方向键。对着漂烬，火花会自己打出。',
+    dash: '点「冲」或按 Shift，可以躲开一下。',
+    clear: '怪清完门才开。捡起地上的烬，货摊靠它买东西。',
+    flare: '焰弹会伤这一间所有敌人，并清掉飞来的火星。留到危急时再用。',
+    choice: '灯龛和天赋只能拿一件，踩上去就选中。',
+    boss: '这是窑主。绕着打，别贴身，焰弹留到它变招再用。'
   };
 
   var PACTS = {
@@ -106,7 +117,22 @@
   }
 
   function newMeta() {
-    return { best: 0, ash: 0, vial: 0, flare: 0, split: 0 };
+    return { best: 0, ash: 0, vial: 0, flare: 0, split: 0, runs: 0, deaths: 0, bestFloor: 0, deathStreak: 0, guideDone: 0 };
+  }
+
+  function easeOf(meta) {
+    var m = meta || {};
+    var reached = m.bestFloor || 0;
+    var streak = m.deathStreak || 0;
+    var runs = m.runs || 0;
+    if (!reached && !runs && ((m.best || 0) > 0 || (m.ash || 0) > 0 || (m.vial || 0) > 0)) return 3;
+    if (reached < 2) {
+      if (runs <= 1 || streak >= 2) return 0;
+      return 1;
+    }
+    if (reached < 3) return streak >= 3 ? 1 : 2;
+    if (streak >= 4) return 2;
+    return 3;
   }
 
   function price(meta, key) {
@@ -314,7 +340,60 @@
     return far[Math.floor(rng.next() * far.length)];
   }
 
-  function buildFloor(rng, floor) {
+  function nearestFight(rooms, origin) {
+    var dist = {};
+    var queue = [origin.id];
+    dist[origin.id] = 0;
+    var best = null;
+    var bestD = 99;
+    while (queue.length) {
+      var id = queue.shift();
+      var room = rooms[id];
+      var fight = room.kind === 'combat' || room.kind === 'trial' || room.kind === 'tide';
+      if (fight && dist[id] < bestD) {
+        bestD = dist[id];
+        best = room;
+      }
+      for (var i = 0; i < DIRS.length; i++) {
+        var next = room.links[DIRS[i]];
+        if (next == null || dist[next] != null) continue;
+        dist[next] = dist[id] + 1;
+        queue.push(next);
+      }
+    }
+    return best;
+  }
+
+  function teachFirstFight(rooms, floor, ease) {
+    if (floor !== 1 || ease > 1) return;
+    var start = null;
+    var i;
+    for (i = 0; i < rooms.length; i++) if (rooms[i].kind === 'start') start = rooms[i];
+    if (!start) return;
+    var room = nearestFight(rooms, start);
+    if (!room || !room.enemies || !room.enemies.length) return;
+    var keep = room.enemies[0];
+    keep.kind = 'mote';
+    keep.hp = 2;
+    keep.maxHp = 2;
+    keep.speed = 44;
+    keep.elite = false;
+    keep.trait = '';
+    keep.shield = 0;
+    keep.cd = 0;
+    keep.x = ROOM_W / 2;
+    keep.y = ROOM_H / 2 - 72;
+    room.enemies = [keep];
+    room.law = 'hearth';
+    room.hearth = 1;
+    room.wave = 0;
+    room.barrels = null;
+    room.hazards = [];
+    room.lesson = 1;
+  }
+
+  function buildFloor(rng, floor, ease) {
+    if (ease == null) ease = 3;
     var rooms = carveRooms(rng);
     var start = rooms[0];
     start.kind = 'start';
@@ -413,37 +492,71 @@
 
     for (i = 0; i < rooms.length; i++) {
       if (rooms[i].kind === 'tide') {
-        rooms[i].wave = 2;
-        for (var t = 0; t < 3; t++) {
-          var tideAt = ringPoint(rng, t, 3);
-          rooms[i].enemies.push(makeEnemy(t === 2 ? 'moth' : 'mote', tideAt.x, tideAt.y, floor, seq.n++));
+        var gentleTide = floor <= 2 && ease <= 1;
+        rooms[i].wave = floor === 1 && ease === 0 ? 0 : (floor <= 2 && ease <= 1 ? 1 : 2);
+        var tideN = floor === 1 && ease === 0 ? 2 : 3;
+        for (var t = 0; t < tideN; t++) {
+          var tideAt = ringPoint(rng, t, ease >= 2 || floor > 2 ? 3 : tideN);
+          var tideKind = gentleTide ? 'mote' : (t === 2 ? 'moth' : 'mote');
+          var tideFoe = makeEnemy(tideKind, tideAt.x, tideAt.y, floor, seq.n++);
+          if (floor === 1 && ease === 0) tideFoe.speed = Math.round(tideFoe.speed * 0.82);
+          rooms[i].enemies.push(tideFoe);
         }
         continue;
       }
       if (rooms[i].kind !== 'combat' && rooms[i].kind !== 'trial') continue;
       var count = floor <= 1 ? 2 : floor === 2 ? 3 : Math.min(6, 4 + Math.floor((floor - 3) / 3));
       if (rooms[i].kind === 'trial') count += 1;
+      if (floor === 1 && ease === 0) count = rooms[i].kind === 'trial' ? 2 : 1;
+      else if (floor === 1 && ease === 1) count = rooms[i].kind === 'trial' ? 2 : 2;
+      else if (floor === 2 && ease <= 1) count = Math.max(2, count - 1);
       var bag = floor === 1 ? ['mote', 'mote', 'spit', 'moth', 'bell'] : floor === 2 ? ['mote', 'spit', 'husk', 'ash', 'moth', 'bell'] : ['husk', 'spit', 'ash', 'ash', 'bell', 'moth'];
-      if (rooms[i].kind === 'trial' && floor === 1) bag = ['mote', 'spit', 'husk'];
+      if (floor === 1 && ease === 0) bag = ['mote', 'mote', 'mote', 'mote'];
+      else if (floor === 1 && ease === 1) bag = rooms[i].kind === 'trial' ? ['mote', 'spit', 'spit'] : ['mote', 'mote', 'spit', 'moth'];
+      else if (floor === 2 && ease === 0) bag = ['mote', 'spit', 'moth', 'bell'];
+      else if (floor === 2 && ease === 1) bag = ['mote', 'spit', 'moth', 'bell', 'husk'];
+      else if (rooms[i].kind === 'trial' && floor === 1) bag = ['mote', 'spit', 'husk'];
       for (var k = 0; k < count; k++) {
         var p = ringPoint(rng, k, count);
         var kind = bag[Math.floor(rng.next() * bag.length)];
-        rooms[i].enemies.push(makeEnemy(kind, p.x, p.y, floor, seq.n++));
+        var foe = makeEnemy(kind, p.x, p.y, floor, seq.n++);
+        if (floor === 1 && ease === 0) foe.speed = Math.round(foe.speed * 0.82);
+        else if (floor === 1 && ease === 1) foe.speed = Math.round(foe.speed * 0.9);
+        else if (floor === 2 && ease === 0) foe.speed = Math.round(foe.speed * 0.9);
+        rooms[i].enemies.push(foe);
       }
       if (rooms[i].kind === 'trial' || floor >= 2) {
         var cracks = floor <= 1 ? 1 : floor === 2 ? 2 : Math.min(5, 2 + Math.floor((floor - 1) / 2));
+        if (floor === 1 && ease <= 1) cracks = 0;
         for (k = 0; k < cracks; k++) {
           var crack = ringPoint(rng, k + 1, cracks + 2);
           rooms[i].hazards.push({ x: crack.x, y: crack.y, r: 16 });
         }
       }
     }
-    applyLaws(rng, rooms, floor);
+    applyLaws(rng, rooms, floor, ease);
+    if (floor <= 2 && ease <= 1) {
+      for (i = 0; i < boss.enemies.length; i++) {
+        var be = boss.enemies[i];
+        if (!isBossKind(be.kind)) continue;
+        var bossMul = ease === 0 && floor === 1 ? 0.62 : 0.82;
+        be.hp = Math.max(14, Math.round(be.hp * bossMul));
+        be.maxHp = be.hp;
+        be.speed = Math.round(be.speed * (ease === 0 ? 0.86 : 0.92));
+        be.cd = +(be.cd * (ease === 0 ? 1.28 : 1.12)).toFixed(3);
+      }
+    }
+    teachFirstFight(rooms, floor, ease);
     return rooms;
   }
 
-  function applyLaws(rng, rooms, floor) {
+  function applyLaws(rng, rooms, floor, ease) {
+    if (ease == null) ease = 3;
     var names = ['nest', 'glass', 'vein', 'duel', 'wave'];
+    if (floor <= 2 && ease <= 0) names = ['hearth', 'vein', 'hearth'];
+    else if (floor === 1 && ease === 1) names = ['hearth', 'vein', 'glass'];
+    else if (floor === 2 && ease === 1) names = ['vein', 'glass', 'nest', 'hearth'];
+    var allowElite = !(floor <= 2 && ease <= 1);
     var eliteGiven = false;
     for (var i = 0; i < rooms.length; i++) {
       var room = rooms[i];
@@ -473,7 +586,13 @@
         room.enemies = [keep];
         eliteGiven = true;
       } else if (law === 'wave') room.wave = 1;
-      if (!eliteGiven && room.enemies.length) {
+      else if (law === 'hearth') {
+        room.hearth = 1;
+        for (var h = 0; h < room.enemies.length; h++) {
+          room.enemies[h].speed = Math.max(28, Math.round(room.enemies[h].speed * 0.78));
+        }
+      }
+      if (allowElite && !eliteGiven && room.enemies.length) {
         var lead = room.enemies[0];
         lead.elite = true;
         lead.trait = rng.next() < 0.5 ? 'split' : 'armored';
@@ -505,7 +624,9 @@
   function createRun(seed, meta) {
     var s = (seed >>> 0) || 1;
     var rng = makeRng(s);
-    var rooms = buildFloor(rng, 1);
+    var ease = easeOf(meta);
+    var rooms = buildFloor(rng, 1, ease);
+    var guiding = ease <= 1 && !(meta && meta.guideDone);
     var state = {
       v: 1,
       seed: s,
@@ -528,7 +649,7 @@
       shots: 1,
       pierce: 0,
       shotCd: 0,
-      shotCdMax: 0.36,
+      shotCdMax: ease === 0 ? 0.3 : 0.36,
       orbit: 0,
       orbitAng: 0,
       flares: 1,
@@ -562,7 +683,13 @@
       shake: 0,
       denyT: 0,
       settled: false,
-      events: []
+      events: [],
+      ease: ease,
+      clears: 0,
+      hurtCount: 0,
+      guideDone: guiding ? 0 : 1,
+      guideText: guiding ? GUIDE.move : '',
+      guide: { on: guiding, step: guiding ? 'move' : '', seen: {}, hold: 0 }
     };
     applyMeta(state, meta);
     applyPact(state);
@@ -636,14 +763,15 @@
     var entered = state.rooms[id];
     if (entered) entered.seen = true;
     state.bolts = [];
-    state.grace = state.pact === 'steady' ? 0.62 : 0.32;
+    state.grace = state.pact === 'steady' ? 0.7 : ((state.ease || 3) <= 1 ? 0.5 : 0.32);
+    if (entered && entered.lesson) entered.told = true;
     state.guard = state.shell || 0;
     state.chain = 0;
     state.chainT = 0;
     var p = arrival(fromDir);
     state.px = p.x;
     state.py = p.y;
-    if (entered && entered.law && !entered.told) {
+    if (entered && entered.law && !entered.told && !entered.lesson) {
       entered.told = true;
       state.toast = lawName(entered.law);
       state.toastT = 1.5;
@@ -659,6 +787,7 @@
       state.toast = bossName(entered.bossKind || (lead && lead.kind));
       state.toastT = 1.4;
     }
+    tuneRoom(state, entered);
   }
 
   function roll(state) {
@@ -672,7 +801,7 @@
     state.floor += 1;
     state.score += 100;
     var rng = makeRng(state.rng || 1);
-    state.rooms = buildFloor(rng, state.floor);
+    state.rooms = buildFloor(rng, state.floor, state.ease == null ? 3 : state.ease);
     state.rng = rng.get();
     state.roomId = startId(state.rooms);
     state.px = ROOM_W / 2;
@@ -686,6 +815,11 @@
     state.toast = floorName(state.floor) + ' · ' + pactName(state.pact);
     state.toastT = 1.8;
     state.events.push('floor');
+    if (state.guide && state.guide.on && state.floor > 1) {
+      state.guide.on = false;
+      state.guideText = '';
+      state.guideDone = true;
+    }
   }
 
   function hurt(state, dmg) {
@@ -699,7 +833,8 @@
       return false;
     }
     state.hp -= dmg;
-    state.iframes = 0.72;
+    state.hurtCount = (state.hurtCount || 0) + 1;
+    state.iframes = (state.ease || 3) <= 1 && (state.floor || 1) <= 2 ? 0.9 : 0.72;
     state.shake = 0.18;
     state.events.push('hurt');
     if (state.hp <= 0) {
@@ -902,6 +1037,7 @@
     if ((room.kind === 'combat' || room.kind === 'boss' || room.kind === 'trial' || room.kind === 'tide') && !room.cleared && alive.length === 0) {
       room.cleared = true;
       room.rewarded = true;
+      state.clears = (state.clears || 0) + 1;
       state.events.push('clear');
       if (room.kind === 'boss') {
         state.score += 180 + state.floor * 40;
@@ -921,6 +1057,13 @@
           state.hp = Math.min(state.maxHp, state.hp + state.wicks);
           state.toast = '回芯暖了一下';
           state.toastT = 1.1;
+        }
+        if (room.hearth && state.status === 'play' && state.hp > 0 && state.hp < state.maxHp) {
+          state.hp = Math.min(state.maxHp, state.hp + 1);
+          if (!(state.wicks > 0)) {
+            state.toast = '暖窑补了一滴灯油';
+            state.toastT = 1.1;
+          }
         }
         if (room.kind === 'tide') {
           room.pickups.push({ kind: 'flare', x: ROOM_W / 2, y: ROOM_H / 2 - 48, r: 12, price: 0 });
@@ -1137,6 +1280,172 @@
     room.pickups = keep;
   }
 
+  function heatOf(state) {
+    var ratio = (state.hp || 0) / Math.max(1, state.maxHp || 1);
+    var hurt = state.hurtCount || 0;
+    var clears = state.clears || 0;
+    var heat = 1;
+    if (ratio <= 0.34) heat = 0.42;
+    else if (ratio <= 0.5) heat = 0.62;
+    else if (ratio < 0.85 && hurt >= 2) heat = 0.78;
+    if (clears >= 2 && hurt === 0 && ratio >= 0.99 && (state.ease || 0) <= 1) heat = 1.12;
+    if ((state.floor || 1) >= 4 && heat < 0.85) heat = 0.85;
+    return heat;
+  }
+
+  function tuneRoom(state, room) {
+    if (!room || room.tuned) return;
+    room.tuned = true;
+    var kind = room.kind;
+    if (kind !== 'combat' && kind !== 'trial' && kind !== 'tide' && kind !== 'boss') return;
+    if (room.lesson) return;
+    var heat = heatOf(state);
+    state.heat = Math.round(heat * 100) / 100;
+    if ((state.floor || 1) >= 4 && heat > 0.7) return;
+    if (heat > 0.93 && heat < 1.05) return;
+    var list = room.enemies || [];
+    if (heat >= 1.08 && (state.ease || 0) <= 1 && (state.floor || 1) <= 2 && kind !== 'boss' && list.length > 0 && list.length < 3) {
+      var extra = makeEnemy('mote', ROOM_W / 2 + 54, ROOM_H / 2 + 36, state.floor || 1, 500 + room.id);
+      extra.speed = Math.round(extra.speed * 0.9);
+      list.push(extra);
+      room.enemies = list;
+      room.ramped = 1;
+      state.toast = '打得很顺，这一间多一只';
+      state.toastT = 1.3;
+      state.events.push('ramp');
+      return;
+    }
+    if (heat >= 1) return;
+    var mul = 0.58 + 0.42 * heat;
+    var changed = false;
+    var i;
+    for (i = 0; i < list.length; i++) {
+      var e = list[i];
+      if (!e || e.hp <= 0) continue;
+      var next = Math.max(1, Math.round(e.hp * mul));
+      if (isBossKind(e.kind)) next = Math.max(10, Math.round(e.hp * (0.72 + 0.28 * heat)));
+      if (next < e.hp) {
+        e.hp = next;
+        e.maxHp = next;
+        changed = true;
+      }
+      if (!isBossKind(e.kind)) e.speed = Math.max(22, Math.round(e.speed * (0.72 + 0.28 * heat)));
+      if (e.cd) e.cd = +(e.cd * (1.05 + (1 - heat) * 0.45)).toFixed(3);
+    }
+    if (heat <= 0.62 && kind !== 'boss' && list.length >= 3 && (state.floor || 1) <= 3) {
+      var cut = list[list.length - 1];
+      if (cut && !isBossKind(cut.kind)) {
+        list.pop();
+        room.enemies = list;
+        changed = true;
+      }
+    }
+    if (heat <= 0.62 && room.wave > 0 && (state.floor || 1) <= 3) {
+      room.wave -= 1;
+      changed = true;
+    }
+    if (changed) {
+      room.soft = 1;
+      state.toast = '灯油见底，这一间放轻了';
+      state.toastT = 1.4;
+      state.events.push('ease');
+    }
+  }
+
+  function tickGuide(state, input, dt) {
+    var g = state.guide;
+    if (!g || !g.on) return;
+    if (!g.seen) g.seen = {};
+    var room = roomAt(state);
+    var ev = state.events || [];
+    function has(name) { return ev.indexOf(name) >= 0; }
+    function show(step) {
+      if (g.step === step) {
+        state.guideText = GUIDE[step] || '';
+        return;
+      }
+      g.step = step;
+      g.hold = 0;
+      state.guideText = GUIDE[step] || '';
+      state.events.push('guide');
+    }
+    function fighting() {
+      return room && (room.kind === 'combat' || room.kind === 'trial' || room.kind === 'tide' || room.kind === 'boss') &&
+        room.enemies && room.enemies.some(function (e) { return e.hp > 0; });
+    }
+    g.hold = (g.hold || 0) + (dt || 0);
+    if (!g.step) show('move');
+    if (g.step === 'move') {
+      if (fighting()) {
+        show('aim');
+        if (has('shoot') || has('hit') || has('kill')) {
+          g.seen.aim = 1;
+          g.hold = 0;
+        }
+      }
+      return;
+    }
+    if (g.step === 'aim') {
+      if (!g.seen.aim && (has('shoot') || has('hit') || has('kill'))) {
+        g.seen.aim = 1;
+        g.hold = 0;
+      }
+      if (g.seen.aim && g.hold > 1.1) show('dash');
+      return;
+    }
+    if (g.step === 'dash') {
+      if (has('dash')) g.seen.dash = 1;
+      var clearedNow = has('clear') || !!(room && room.cleared);
+      if (clearedNow && (g.seen.dash || g.hold > 1.8)) show('clear');
+      return;
+    }
+    if (g.step === 'clear') {
+      g.seen.clear = 1;
+      state.guideDone = true;
+      if (room && (room.kind === 'shrine' || room.kind === 'talent' || room.kind === 'gift') && !g.seen.choice) {
+        show('choice');
+        return;
+      }
+      if (fighting() && (state.flares || 0) > 0 && !g.seen.flare) {
+        show('flare');
+        return;
+      }
+      if (room && room.kind === 'boss' && !g.seen.boss) {
+        show('boss');
+        return;
+      }
+      if (g.hold > 3.2) {
+        g.on = false;
+        state.guideText = '';
+      }
+      return;
+    }
+    if (g.step === 'flare') {
+      if (has('flare') || has('clear') || g.hold > 4) {
+        g.seen.flare = 1;
+        show('clear');
+        g.hold = 2.4;
+      }
+      return;
+    }
+    if (g.step === 'choice') {
+      if (has('pickup') || g.hold > 3.2) {
+        g.seen.choice = 1;
+        show('clear');
+        g.hold = 2.4;
+      }
+      return;
+    }
+    if (g.step === 'boss') {
+      g.seen.boss = 1;
+      if (g.hold > 4 || has('clear')) {
+        g.on = false;
+        state.guideText = '';
+        state.guideDone = true;
+      }
+    }
+  }
+
   function step(state, input, dt) {
     if (!state || state.status !== 'play') return state;
     input = input || idle();
@@ -1153,6 +1462,7 @@
     if ((state.chainT || 0) <= 0) state.chain = 0;
 
     var room = roomAt(state);
+    if (room && !room.tuned) tuneRoom(state, room);
     steerDash(state, input, dt);
     movePlayer(state, input, dt);
     var hazards = room.hazards || [];
@@ -1277,9 +1587,16 @@
         if (e.kind === 'spit' || e.kind === 'warden') {
           e.cd -= dt;
           if (e.cd <= 0) {
-            if (e.kind === 'warden') radial(state, e, e.phased ? 12 : 8, e.phased ? 156 : 132);
-            else enemyShoot(state, e);
-            e.cd = e.kind === 'warden' ? (e.phased ? 0.72 : Math.max(0.55, 1.45 - Math.min(6, state.floor) * 0.1)) : 1.25;
+            if (e.kind === 'warden') {
+              var volley = e.phased ? 12 : 8;
+              var volleySpd = e.phased ? 156 : 132;
+              if (!e.phased && (state.ease || 3) <= 1 && (state.floor || 1) <= 2) {
+                volley = (state.ease || 0) === 0 ? 5 : 6;
+                volleySpd = (state.ease || 0) === 0 ? 108 : 116;
+              }
+              radial(state, e, volley, volleySpd);
+            } else enemyShoot(state, e);
+            e.cd = e.kind === 'warden' ? (e.phased ? 0.72 : Math.max(0.55, 1.45 - Math.min(6, state.floor) * 0.1)) : ((state.ease || 3) <= 1 && (state.floor || 1) <= 2 ? 1.55 : 1.25);
           }
         }
       }
@@ -1404,6 +1721,7 @@
     if (state.status !== 'play') return state;
     collect(state);
     if (state.status !== 'play') return state;
+    tickGuide(state, input, dt);
     tryTransition(state);
     return state;
   }
@@ -1414,6 +1732,15 @@
     var gained = state.floor * 2 + Math.floor((state.cinders || 0) / 5) + (state.status === 'win' ? 8 : 0);
     meta.ash = (meta.ash || 0) + gained;
     if ((state.score || 0) > (meta.best || 0)) meta.best = state.score;
+    var reached = state.floor || 1;
+    var deepened = reached > (meta.bestFloor || 0);
+    if (deepened) meta.bestFloor = reached;
+    if (state.status === 'dead') {
+      meta.deaths = (meta.deaths || 0) + 1;
+      if (deepened && reached >= 2) meta.deathStreak = 0;
+      else meta.deathStreak = (meta.deathStreak || 0) + 1;
+    } else if (deepened) meta.deathStreak = 0;
+    if (state.guideDone) meta.guideDone = 1;
     return gained;
   }
 
@@ -1467,6 +1794,7 @@
 
   function applyPact(state) {
     var keys = ['thirst', 'leech', 'hunter', 'steady'];
+    if ((state.ease || 0) <= 1 && (state.floor || 1) === 1) keys = ['steady', 'leech', 'steady', 'leech'];
     state.pact = keys[Math.floor(roll(state) * keys.length)];
     if (state.pact === 'hunter') state.damage = Math.min(6, (state.damage || 1) + 1);
   }
@@ -1540,6 +1868,7 @@
     FLOORS: FLOORS,
     SHOP: SHOP,
     createRun: createRun,
+    easeOf: easeOf,
     step: step,
     newMeta: newMeta,
     buy: buy,
