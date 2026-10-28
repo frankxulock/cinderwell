@@ -30,6 +30,7 @@
   var touchMode = false;
   var art = {};
   var fx = { t: 0, parts: [], floats: [], walk: 0, px: 0, py: 0, clear: 0, fade: 0, flash: 0, banner: 0, bannerText: '', reduced: false };
+  var feel = { dt: 0.016, freeze: 0, mx: 0, my: 0, ghosts: {} };
   var G = window.CinderwellGrowth;
   var host = null;
   var growthBook = {};
