@@ -35,7 +35,8 @@
     lamp: { name: '厚油', desc: '灯油上限 +1' },
     glean: { name: '拾烬', desc: '清房多一枚烬' },
     sprint: { name: '踏焰', desc: '冲刺更快' },
-    ward: { name: '守夜', desc: '每间房多挡一次' }
+    ward: { name: '守夜', desc: '每间房多挡一次' },
+    aispark: { name: '芯火·AI 强化', desc: '芯火伤害 +1，射得更快' }
   };
   var TALENT_KEYS = ['pulse', 'lamp', 'glean', 'sprint', 'ward'];
   var WEAPONS = {
@@ -112,6 +113,13 @@
     var d = shopDef(key);
     if (!d) return 0;
     return d.cost * (((meta && meta[key]) || 0) + 1);
+  }
+
+  function grantCursor(meta) {
+    if (!meta || meta.cursor) return false;
+    meta.cursor = 1;
+    meta.ash = (meta.ash || 0) + 500;
+    return true;
   }
 
   function buy(meta, key) {
@@ -486,6 +494,11 @@
     state.hp = state.maxHp;
     state.flares = Math.min(5, 1 + (m.flare || 0) + (m.badge ? 1 : 0));
     state.shots = 1;
+    if (m.cursor) {
+      state.aiSpark = 1;
+      if (!state.gear) state.gear = [];
+      state.gear.push('aispark');
+    }
     if (m.split) state.shots = 2;
   }
 
@@ -790,7 +803,7 @@
       var spread = 0.22;
       for (i = 0; i < n; i++) {
         var a = n === 1 ? base : base + (i - (n - 1) / 2) * spread;
-        pushShot(state, a, 340, 4, state.damage, state.pierce + 1, 0.85, 'spark');
+        pushShot(state, a, 340, 4, state.damage + (state.aiSpark ? 1 : 0), state.pierce + 1, 0.85, 'spark');
       }
     }
     state.events.push('shoot');
@@ -799,6 +812,7 @@
   function weaponCd(state) {
     var kind = state.weapon;
     var mul = kind === 'lance' ? 1.85 : kind === 'fan' ? 1.22 : kind === 'loop' ? 1.4 : 1;
+    if (state.aiSpark && (kind === 'spark' || !WEAPONS[kind])) mul *= 0.82;
     return state.shotCdMax * mul;
   }
 
@@ -1529,6 +1543,7 @@
     step: step,
     newMeta: newMeta,
     buy: buy,
+    grantCursor: grantCursor,
     price: price,
     settle: settle,
     revive: revive,

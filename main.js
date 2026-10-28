@@ -1366,6 +1366,35 @@
     return G.inviteTarget(location.href, cfg.bot || '', cfg.app || 'cinderwell', G.startParam(meta.growth), cfg.publicUrl || '');
   }
 
+  function cursorUrl() {
+    var cfg = window.CINDERWELL_TG || {};
+    var custom = String(cfg.cursorUrl || '').trim();
+    if (/^https:\/\/[A-Za-z0-9.-]+\//.test(custom)) return custom;
+    return G.CURSOR_URL;
+  }
+
+  function openExternal(url) {
+    var tg = window.Telegram && window.Telegram.WebApp;
+    if (tg && typeof tg.openLink === 'function') {
+      try { tg.openLink(url); return; } catch (e) {}
+    }
+    window.open(url, '_blank', 'noopener');
+  }
+
+  function openCursor() {
+    ensureGrowth();
+    openExternal(cursorUrl());
+    if (L.grantCursor(meta)) {
+      $('growth-copy').textContent = '冥想完成。灰烬 +500。下一局芯火得到 AI 强化。';
+      blip(880, 0.1, 'triangle', 0.04);
+    } else {
+      $('growth-copy').textContent = '冥想已经完成。奖励不会再发一次。';
+    }
+    persist();
+    paintMenu();
+    paintGrowth();
+  }
+
   function openShare(url) {
     if (hostCall('openTelegramLink', { url: url })) return;
     var tg = window.Telegram && window.Telegram.WebApp;
@@ -1392,7 +1421,11 @@
       meta.growth.premium > 0 ? 'Premium 好友已加成' : 'Premium 好友会再加一截'
     ];
     if (channelName()) tasks.splice(1, 0, meta.growth.channel ? '已打开官方频道' : '打开官方频道');
-    $('growth-tasks').innerHTML = tasks.map(function (line) { return '<li>' + line + '</li>'; }).join('');
+    var cursorDone = !!meta.cursor;
+    var cursor = '<li><button type="button" class="task-link" id="btn-cursor">'
+      + (cursorDone ? '🔮 AI 冥想已完成' : G.CURSOR_NAME)
+      + '</button><p class="cursor-note">' + G.CURSOR_DESC + '</p></li>';
+    $('growth-tasks').innerHTML = tasks.map(function (line) { return '<li>' + line + '</li>'; }).join('') + cursor;
     $('btn-channel').classList.toggle('hidden', !channelName());
     $('btn-claim').disabled = !(got >= goal && !meta.badge);
     $('squad-input').value = meta.growth.squad ? ('@' + meta.growth.squad) : '';
@@ -1488,10 +1521,16 @@
       paintGrowth();
       $('growth-copy').textContent = '已加入 @' + name + '。积分按你的最高分计入，不会扣别人的分。';
     });
+    T.on($('growth-tasks'), 'click', function (e) {
+      var node = e.target;
+      while (node && node !== $('growth-tasks')) {
+        if (node.id === 'btn-cursor') { openCursor(); return; }
+        node = node.parentNode;
+      }
+    });
     T.on($('btn-rally'), 'click', function () {
       ensureGrowth();
-      var text = $('rally-text').textContent || G.SHARE_TEXT;
-      var url = 'https://t.me/share/url?url=' + encodeURIComponent(inviteTarget()) + '&text=' + encodeURIComponent(text);
+      var url = G.shareLink(inviteTarget());
       meta.growth.rankSeen = meta.growth.pendingRank || meta.growth.rankSeen;
       meta.growth.rallyMute = meta.growth.pendingRank || meta.growth.rallyMute;
       persist();

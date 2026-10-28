@@ -7,8 +7,11 @@
   'use strict';
 
   var GOAL = 8;
-  var SHARE_TITLE = '🎮 [新星 TON 游戏] 诚邀您加入我们的生态探索之旅！';
-  var SHARE_TEXT = '🚀 早期参与者可获得专属的游戏内积分与早期测试者徽章。点击即玩！';
+  var CURSOR_URL = 'https://cursor.com/';
+  var CURSOR_NAME = '🔮 解锁 AI 冥想（使用 Cursor 构建本游戏）';
+  var CURSOR_DESC = '本游戏《烬井》100% 由独立开发者使用 Cursor AI 编辑器在极短时间内全自动编写。点击下方链接探索这款改变游戏开发历史的 AI 神器，完成冥想即可获得「灰烬 +500」与特殊天赋「芯火·AI 强化」。';
+  var SHARE_TITLE = '🔥 听说过全 AI 写的肉鸽游戏吗？';
+  var SHARE_TEXT = '我正在玩《烬井》，这款没有底的硬核射击游戏竟然是 100% 用 Cursor AI 写出来的！';
 
   function blank() {
     return {
@@ -90,9 +93,16 @@
     return local + (param ? ('?ref=' + encodeURIComponent(param)) : '');
   }
 
+  function shareMessage(target) {
+    var link = String(target || '');
+    return SHARE_TITLE + '\n'
+      + SHARE_TEXT + '\n'
+      + '点击链接直接在 Telegram 里开玩：' + link + '\n'
+      + '快来加入我的群组公会，一起下井打榜！';
+  }
+
   function shareLink(target) {
-    var text = SHARE_TITLE + '\n' + SHARE_TEXT;
-    return 'https://t.me/share/url?url=' + encodeURIComponent(target) + '&text=' + encodeURIComponent(text);
+    return 'https://t.me/share/url?url=' + encodeURIComponent(target) + '&text=' + encodeURIComponent(shareMessage(target));
   }
 
   function rallyText(mine, rival) {
@@ -142,8 +152,12 @@
 
   return {
     GOAL: GOAL,
+    CURSOR_URL: CURSOR_URL,
+    CURSOR_NAME: CURSOR_NAME,
+    CURSOR_DESC: CURSOR_DESC,
     SHARE_TITLE: SHARE_TITLE,
     SHARE_TEXT: SHARE_TEXT,
+    shareMessage: shareMessage,
     blank: blank,
     normalize: normalize,
     slug: slug,
