@@ -22,7 +22,8 @@
       premium: 0,
       squad: '',
       rankSeen: 0,
-      rallyMute: 0
+      rallyMute: 0,
+      source: 'direct'
     };
   }
 
@@ -37,7 +38,17 @@
     g.squad = slug(raw.squad);
     g.rankSeen = Math.max(0, raw.rankSeen || 0);
     g.rallyMute = Math.max(0, raw.rallyMute || 0);
+    g.source = parseSource(raw.source);
     return g;
+  }
+
+  var SOURCES = { twitter: 1, reddit: 1, tiktok: 1, producthunt: 1, v2ex: 1, threads: 1, direct: 1 };
+
+  function parseSource(value) {
+    var s = String(value || '').trim().toLowerCase();
+    if (s === 'x') s = 'twitter';
+    if (s === 'ph' || s === 'product_hunt') s = 'producthunt';
+    return SOURCES[s] ? s : 'direct';
   }
 
   function slug(name) {
@@ -161,6 +172,7 @@
     blank: blank,
     normalize: normalize,
     slug: slug,
+    parseSource: parseSource,
     points: points,
     ready: ready,
     parseStart: parseStart,

@@ -1314,9 +1314,63 @@
       saveGrowthBook();
     }
     if (parsed.squad && !meta.growth.squad) meta.growth.squad = parsed.squad;
+    noteSource();
     var mine = G.credits(growthBook, meta.growth.id);
     meta.growth.friends = Math.max(meta.growth.friends || 0, mine.friends);
     meta.growth.premium = Math.max(meta.growth.premium || 0, mine.premium);
+  }
+
+  function pageTelegram() {
+    return window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  }
+
+  function signedInitData() {
+    var tg = pageTelegram();
+    var fromPage = tg && typeof tg.initData === 'string' ? tg.initData : '';
+    if (fromPage.length >= 20) return fromPage;
+    var fromHost = host && host.telegram && typeof host.telegram.initData === 'string' ? host.telegram.initData : '';
+    return fromHost.length >= 20 ? fromHost : '';
+  }
+
+  function forgedIdentity() {
+    var tg = pageTelegram();
+    var unsafe = (tg && tg.initDataUnsafe) || (host && host.telegram && host.telegram.initDataUnsafe) || null;
+    var user = unsafe && unsafe.user;
+    return !!(user && user.id) && !signedInitData();
+  }
+
+  function noteSource() {
+    var incoming = 'direct';
+    try { incoming = G.parseSource(new URLSearchParams(location.search).get('source')); } catch (e) {}
+    var prev = meta.growth.source || 'direct';
+    if ((prev === 'direct' || !meta.growth.source) && incoming !== prev) {
+      meta.growth.source = incoming;
+      persist();
+    }
+    if (incoming === 'direct') return;
+    var seen = '';
+    try { seen = sessionStorage.getItem('cinderwell.track.click') || ''; } catch (e2) {}
+    if (seen === incoming) return;
+    try { sessionStorage.setItem('cinderwell.track.click', incoming); } catch (e3) {}
+    reportTrack('click');
+  }
+
+  function reportTrack(event) {
+    var cfg = window.CINDERWELL_TG || {};
+    var api = String(cfg.api || '').replace(/\/$/, '');
+    if (!api) return;
+    var body = {
+      source: (meta.growth && meta.growth.source) || 'direct',
+      event: event,
+      initData: event === 'claim' ? signedInitData() : ''
+    };
+    try {
+      fetch(api + '/api/v1/growth/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).catch(function () {});
+    } catch (e) {}
   }
 
   function squadRows() {
@@ -1500,9 +1554,14 @@
     T.on($('btn-claim'), 'click', function () {
       ensureGrowth();
       if (G.points(meta.growth) < milestoneGoal() || meta.badge) return;
+      if (forgedIdentity()) {
+        $('growth-copy').textContent = '这不是 Telegram 里的真实身份，星标不发。';
+        return;
+      }
       meta.badge = 1;
       meta.ash = (meta.ash || 0) + 12;
       persist();
+      if (signedInitData()) reportTrack('claim');
       paintMenu();
       $('growth-copy').textContent = '星标已领。下一局多一发焰弹，灰烬 +12。';
       paintGrowth();
