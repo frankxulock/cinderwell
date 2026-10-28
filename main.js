@@ -386,6 +386,13 @@
     var s = Math.min(aw / W, Math.max(1, ah) / H);
     view.s = s;
     view.ox = (cv.width - W * s) / 2;
+    var app = document.getElementById('app');
+    if (app) {
+      var rect = cv.getBoundingClientRect();
+      var k = rect.width / Math.max(1, cv.width);
+      app.style.setProperty('--room-left', Math.max(0, view.ox * k) + 'px');
+      app.style.setProperty('--room-width', Math.max(120, W * s * k) + 'px');
+    }
     view.oy = padT * (cv.width / Math.max(1, cv.getBoundingClientRect().width)) + Math.max(0, (ah - H * s) / 2);
   }
 
@@ -911,7 +918,12 @@
     ctx2.font = '14px sans-serif';
     ctx2.textAlign = 'center';
     if (text) ctx2.fillText(text, W / 2, 46);
-    if (room.kind === 'start' && run.time < 6) {
+    if (room.kind === 'start' && run.guide && run.guide.on && run.guide.step === 'move' && room.guideDir) {
+      var way = { n: '上方', s: '下方', w: '左边', e: '右边' }[room.guideDir] || '亮着';
+      ctx2.fillStyle = 'rgba(255, 208, 137, 0.92)';
+      ctx2.font = '13px sans-serif';
+      ctx2.fillText('先往' + way + '走', W / 2, H - 42);
+    } else if (room.kind === 'start' && run.time < 6) {
       ctx2.fillStyle = 'rgba(244,234,215,0.72)';
       ctx2.font = '13px sans-serif';
       ctx2.fillText('WASD 走，鼠标瞄准。Shift 冲刺，空格焰弹。', W / 2, H - 42);
@@ -934,7 +946,8 @@
       if (room.links[d[0]] == null) continue;
       var dest = run.rooms[room.links[d[0]]];
       var open = doorOpen(room, d[0]);
-      var glow = 0.14 + Math.sin(fx.t * 3 + i) * 0.05;
+      var leadDoor = open && room.guideDir === d[0] && run.guide && run.guide.on && run.guide.step === 'move';
+      var glow = leadDoor ? 0.42 + Math.sin(fx.t * 4) * 0.16 : 0.14 + Math.sin(fx.t * 3 + i) * 0.05;
       ctx2.fillStyle = open ? '#100c14' : (dest.kind === 'cache' && !dest.unlocked ? '#6a4a28' : '#241c2e');
       ctx2.fillRect(d[1], d[2], d[3], d[4]);
       if (open) {
@@ -944,6 +957,15 @@
         ctx2.strokeStyle = 'rgba(180, 150, 120, ' + (0.45 + Math.sin(fx.t * 2 + i) * 0.15) + ')';
         ctx2.lineWidth = 2;
         ctx2.strokeRect(d[1] + 6, d[2] + 4, d[3] - 12, d[4] - 8);
+      }
+      if (leadDoor) {
+        ctx2.fillStyle = 'rgba(255, 208, 137, 0.95)';
+        ctx2.font = '16px sans-serif';
+        ctx2.textAlign = 'center';
+        ctx2.textBaseline = 'middle';
+        var ax = d[0] === 'w' ? 46 : d[0] === 'e' ? W - 46 : W / 2;
+        var ay = d[0] === 'n' ? 46 : d[0] === 's' ? H - 46 : H / 2;
+        ctx2.fillText(d[0] === 'n' ? '▲' : d[0] === 's' ? '▼' : d[0] === 'w' ? '◀' : '▶', ax, ay + Math.sin(fx.t * 5) * 3);
       }
     }
   }

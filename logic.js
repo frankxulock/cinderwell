@@ -58,7 +58,7 @@
   };
 
   var GUIDE = {
-    move: '左边走，电脑用 WASD。走到门口进入下一间。',
+    move: '用 WASD 或左摇杆，往发亮的门口走。',
     aim: '右边瞄准，或按住方向键。对着漂烬，火花会自己打出。',
     dash: '点「冲」或按 Shift，可以躲开一下。',
     clear: '怪清完门才开。捡起地上的烬，货摊靠它买东西。',
@@ -392,6 +392,49 @@
     room.lesson = 1;
   }
 
+  var PLAY_KEYS = ['kind', 'enemies', 'pickups', 'hazards', 'barrels', 'law', 'wave', 'cleared', 'unlocked', 'rewarded', 'lesson', 'hearth', 'bossKind', 'told'];
+
+  function exchangeRoomPlay(a, b) {
+    for (var i = 0; i < PLAY_KEYS.length; i++) {
+      var key = PLAY_KEYS[i];
+      var tmp = a[key];
+      a[key] = b[key];
+      b[key] = tmp;
+    }
+  }
+
+  function guideMoveText(dir) {
+    var way = { n: '上方', s: '下方', w: '左边', e: '右边' }[dir] || '发亮';
+    return '用 WASD 或左摇杆，往' + way + '那扇亮着的门走。';
+  }
+
+  function openLesson(rooms, ease) {
+    if (ease > 1) return;
+    var start = null;
+    var lesson = null;
+    var i;
+    for (i = 0; i < rooms.length; i++) {
+      if (rooms[i].kind === 'start') start = rooms[i];
+      if (rooms[i].lesson) lesson = rooms[i];
+    }
+    if (!start || !lesson) return;
+    var adjacent = false;
+    for (i = 0; i < DIRS.length; i++) if (start.links[DIRS[i]] === lesson.id) adjacent = true;
+    if (!adjacent) {
+      var nid = null;
+      for (i = 0; i < DIRS.length; i++) {
+        if (start.links[DIRS[i]] != null) { nid = start.links[DIRS[i]]; break; }
+      }
+      if (nid == null) return;
+      exchangeRoomPlay(rooms[nid], lesson);
+    }
+    start.guideDir = '';
+    for (i = 0; i < DIRS.length; i++) {
+      var id = start.links[DIRS[i]];
+      if (id != null && rooms[id].lesson) start.guideDir = DIRS[i];
+    }
+  }
+
   function buildFloor(rng, floor, ease) {
     if (ease == null) ease = 3;
     var rooms = carveRooms(rng);
@@ -547,6 +590,7 @@
       }
     }
     teachFirstFight(rooms, floor, ease);
+    if (floor === 1) openLesson(rooms, ease);
     return rooms;
   }
 
@@ -627,6 +671,7 @@
     var ease = easeOf(meta);
     var rooms = buildFloor(rng, 1, ease);
     var guiding = ease <= 1 && !(meta && meta.guideDone);
+    var moveText = guiding ? guideMoveText(rooms[startId(rooms)] && rooms[startId(rooms)].guideDir) : '';
     var state = {
       v: 1,
       seed: s,
@@ -688,8 +733,8 @@
       clears: 0,
       hurtCount: 0,
       guideDone: guiding ? 0 : 1,
-      guideText: guiding ? GUIDE.move : '',
-      guide: { on: guiding, step: guiding ? 'move' : '', seen: {}, hold: 0 }
+      guideText: moveText,
+      guide: { on: guiding, step: guiding ? 'move' : '', seen: {}, hold: 0, moveText: moveText }
     };
     applyMeta(state, meta);
     applyPact(state);
@@ -712,7 +757,24 @@
     var dest = state.rooms[room.links[dir]];
     if (!dest) return false;
     if (dest.kind === 'cache' && !dest.unlocked && state.seals <= 0) return false;
+    if (tutorialDoorOnly(state, room, dest)) return false;
     return true;
+  }
+
+  function runEase(state) {
+    return !state || state.ease == null ? 3 : state.ease;
+  }
+
+  function tutorialDoorOnly(state, room, dest) {
+    if (runEase(state) > 1 || state.guideDone || (state.clears || 0) > 0) return false;
+    if (!room || room.kind !== 'start' || !dest) return false;
+    var hasLesson = false;
+    for (var i = 0; i < DIRS.length; i++) {
+      var id = room.links[DIRS[i]];
+      if (id != null && state.rooms[id] && state.rooms[id].lesson) hasLesson = true;
+    }
+    if (!hasLesson) return false;
+    return !dest.lesson;
   }
 
   function inMouth(x, y, r, dir) {
@@ -763,7 +825,7 @@
     var entered = state.rooms[id];
     if (entered) entered.seen = true;
     state.bolts = [];
-    state.grace = state.pact === 'steady' ? 0.7 : ((state.ease || 3) <= 1 ? 0.5 : 0.32);
+    state.grace = state.pact === 'steady' ? 0.7 : (runEase(state) <= 1 ? 0.5 : 0.32);
     if (entered && entered.lesson) entered.told = true;
     state.guard = state.shell || 0;
     state.chain = 0;
@@ -834,7 +896,7 @@
     }
     state.hp -= dmg;
     state.hurtCount = (state.hurtCount || 0) + 1;
-    state.iframes = (state.ease || 3) <= 1 && (state.floor || 1) <= 2 ? 0.9 : 0.72;
+    state.iframes = runEase(state) <= 1 && (state.floor || 1) <= 2 ? 0.9 : 0.72;
     state.shake = 0.18;
     state.events.push('hurt');
     if (state.hp <= 0) {
@@ -1366,7 +1428,7 @@
       }
       g.step = step;
       g.hold = 0;
-      state.guideText = GUIDE[step] || '';
+      state.guideText = step === 'move' && g.moveText ? g.moveText : (GUIDE[step] || '');
       state.events.push('guide');
     }
     function fighting() {
@@ -1590,13 +1652,13 @@
             if (e.kind === 'warden') {
               var volley = e.phased ? 12 : 8;
               var volleySpd = e.phased ? 156 : 132;
-              if (!e.phased && (state.ease || 3) <= 1 && (state.floor || 1) <= 2) {
-                volley = (state.ease || 0) === 0 ? 5 : 6;
-                volleySpd = (state.ease || 0) === 0 ? 108 : 116;
+              if (!e.phased && runEase(state) <= 1 && (state.floor || 1) <= 2) {
+                volley = runEase(state) === 0 ? 5 : 6;
+                volleySpd = runEase(state) === 0 ? 108 : 116;
               }
               radial(state, e, volley, volleySpd);
             } else enemyShoot(state, e);
-            e.cd = e.kind === 'warden' ? (e.phased ? 0.72 : Math.max(0.55, 1.45 - Math.min(6, state.floor) * 0.1)) : ((state.ease || 3) <= 1 && (state.floor || 1) <= 2 ? 1.55 : 1.25);
+            e.cd = e.kind === 'warden' ? (e.phased ? 0.72 : Math.max(0.55, 1.45 - Math.min(6, state.floor) * 0.1)) : (runEase(state) <= 1 && (state.floor || 1) <= 2 ? 1.55 : 1.25);
           }
         }
       }
