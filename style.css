@@ -110,6 +110,57 @@ canvas {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
 }
 .coach.desk { bottom: calc(28px + var(--safe-b)); }
+.coach.desk.with-keys { bottom: calc(84px + var(--safe-b)); }
+.desk-keys {
+  position: absolute;
+  left: var(--room-left, 0px);
+  width: var(--room-width, 100%);
+  bottom: calc(24px + var(--safe-b));
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.desk-keys span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(231, 160, 74, 0.35);
+  background: rgba(22, 18, 28, 0.92);
+  color: var(--muted);
+  font-size: 13px;
+}
+.desk-keys span.on {
+  color: #2a1608;
+  background: #ffd089;
+  border-color: transparent;
+  font-weight: 700;
+}
+.stick-label {
+  position: absolute;
+  left: 50%;
+  top: -22px;
+  transform: translateX(-50%);
+  color: var(--amber-2);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+  opacity: 0;
+}
+.sticks.teaching .stick-label { opacity: 0.55; }
+.stick.hint {
+  box-shadow: 0 0 0 3px rgba(255, 208, 137, 0.95);
+  animation: coachpulse 1s ease-in-out infinite;
+}
+.stick.hint .stick-label { opacity: 1; }
+.dash.hint, .flare.hint {
+  box-shadow: 0 0 0 3px rgba(255, 208, 137, 0.95);
+  animation: coachpulse 1s ease-in-out infinite;
+}
+@keyframes coachpulse {
+  50% { transform: translateY(-3px); }
+}
 .gear {
   margin: 2px 0 0;
   min-height: 16px;
@@ -248,7 +299,7 @@ canvas {
   .sticks { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .oil.on, .toast, .flare, .card, .oils.low .oil.on { animation: none; }
+  .oil.on, .toast, .flare, .card, .oils.low .oil.on, .stick.hint, .dash.hint, .flare.hint { animation: none; }
   .btn { transition: none; }
 }
 

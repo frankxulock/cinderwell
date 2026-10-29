@@ -76,7 +76,7 @@
     $('overlay').classList.toggle('hidden', playing);
     $('overlay').classList.toggle('play', false);
     $('hud').classList.toggle('hidden', !playing && name !== 'pause');
-    var sticksOn = playing && (touchMode || window.matchMedia('(pointer: coarse)').matches);
+    var sticksOn = playing && usingTouch();
     $('sticks').classList.toggle('hidden', !sticksOn);
     if (name === 'menu') {
       paintMenu();
@@ -86,6 +86,7 @@
     if (name === 'growth') paintGrowth();
     if (name === 'pause') $('pause-text').textContent = pauseCopy();
     if (name !== 'play' && $('coach')) $('coach').classList.add('hidden');
+    if (name !== 'play' && $('desk-keys')) $('desk-keys').classList.add('hidden');
     var card = $('screen-' + name);
     if (card && !card.classList.contains('hidden')) {
       card.style.animation = 'none';
@@ -330,6 +331,49 @@
     return cur + (target - cur) * k;
   }
 
+  function usingTouch() {
+    return touchMode || window.matchMedia('(pointer: coarse)').matches;
+  }
+
+  function guideWay() {
+    var room = run && run.rooms && run.rooms[run.roomId];
+    var dir = room && room.guideDir;
+    if (dir === 'n') return t('wayN');
+    if (dir === 's') return t('wayS');
+    if (dir === 'w') return t('wayW');
+    if (dir === 'e') return t('wayE');
+    return t('wayLit');
+  }
+
+  function coachLine(step) {
+    var touch = usingTouch();
+    if (step === 'move') return t(touch ? 'guideMoveTouch' : 'guideMoveDesk', { way: guideWay() });
+    if (step === 'aim') return t(touch ? 'guideAimTouch' : 'guideAimDesk');
+    if (step === 'dash') return t(touch ? 'guideDashTouch' : 'guideDashDesk');
+    if (step === 'flare') return t(touch ? 'guideFlareTouch' : 'guideFlareDesk');
+    return g(run.guideText);
+  }
+
+  function markGuide(step) {
+    var touch = usingTouch();
+    var teaching = step === 'move' || step === 'aim' || step === 'dash' || step === 'flare';
+    if ($('sticks')) $('sticks').classList.toggle('teaching', touch && !!step);
+    if ($('stick-l')) $('stick-l').classList.toggle('hint', touch && step === 'move');
+    if ($('stick-r')) $('stick-r').classList.toggle('hint', touch && step === 'aim');
+    if ($('dash-btn')) $('dash-btn').classList.toggle('hint', touch && step === 'dash');
+    if ($('flare-btn')) $('flare-btn').classList.toggle('hint', touch && step === 'flare');
+    var keys = $('desk-keys');
+    if (keys) {
+      keys.classList.toggle('hidden', touch || !teaching);
+      ['move', 'aim', 'dash', 'flare'].forEach(function (name) {
+        var el = $('key-' + name);
+        if (el) el.classList.toggle('on', step === name);
+      });
+    }
+    var coach = $('coach');
+    if (coach) coach.classList.toggle('with-keys', !touch && teaching);
+  }
+
   function readInput() {
     var mx = 0;
     var my = 0;
@@ -419,7 +463,9 @@
 
   function fit() {
     var padT = screen === 'play' ? 78 : 24;
-    var padB = (screen === 'play' && !$('sticks').classList.contains('hidden')) ? 150 : 24;
+    var guideStep = run && run.guide && run.guide.on ? run.guide.step : '';
+    var guideBar = guideStep === 'move' || guideStep === 'aim' || guideStep === 'dash' || guideStep === 'flare';
+    var padB = (screen === 'play' && (usingTouch() || guideBar)) ? 150 : 24;
     var aw = cv.width;
     var ah = cv.height - (padT + padB) * (cv.width / Math.max(1, cv.getBoundingClientRect().width));
     var s = Math.min(aw / W, Math.max(1, ah) / H);
@@ -511,12 +557,14 @@
       }
     } else toast.classList.add('hidden');
     var coach = $('coach');
+    var step = run.guide && run.guide.on ? run.guide.step : '';
     if (coach) {
-      var tip = run.guide && run.guide.on && run.guideText ? run.guideText : '';
+      var tip = step && run.guideText ? coachLine(step) : '';
       coach.classList.toggle('hidden', !tip);
-      coach.classList.toggle('desk', $('sticks').classList.contains('hidden'));
-      if (tip) setText('coach', g(tip));
+      coach.classList.toggle('desk', !usingTouch());
+      if (tip) setText('coach', tip);
     }
+    markGuide(step);
   }
 
   function paint() {
@@ -959,14 +1007,13 @@
     ctx2.textAlign = 'center';
     if (text) ctx2.fillText(room.kind === 'boss' ? text : g(text), W / 2, 46);
     if (room.kind === 'start' && run.guide && run.guide.on && run.guide.step === 'move' && room.guideDir) {
-      var way = { n: '上方', s: '下方', w: '左边', e: '右边' }[room.guideDir] || '亮着';
       ctx2.fillStyle = 'rgba(255, 208, 137, 0.92)';
       ctx2.font = '13px sans-serif';
-      ctx2.fillText(g('先往' + way + '走'), W / 2, H - 42);
+      ctx2.fillText(t(usingTouch() ? 'captionMoveTouch' : 'captionMoveDesk', { way: guideWay() }), W / 2, H - 42);
     } else if (room.kind === 'start' && run.time < 6) {
       ctx2.fillStyle = 'rgba(244,234,215,0.72)';
       ctx2.font = '13px sans-serif';
-      ctx2.fillText(g('WASD 走，鼠标瞄准。Shift 冲刺，空格焰弹。'), W / 2, H - 42);
+      ctx2.fillText(t(usingTouch() ? 'captionIdleTouch' : 'captionIdleDesk'), W / 2, H - 42);
     }
   }
 

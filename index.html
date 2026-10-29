@@ -30,11 +30,17 @@
     <p class="toast hidden" id="toast"></p>
   </header>
   <p class="coach hidden" id="coach"></p>
+  <div class="desk-keys hidden" id="desk-keys">
+    <span id="key-move" data-i18n="keyMove">WASD 移动</span>
+    <span id="key-aim" data-i18n="keyAim">鼠标瞄准</span>
+    <span id="key-dash" data-i18n="keyDash">Shift 冲刺</span>
+    <span id="key-flare" data-i18n="keyFlare">空格焰弹</span>
+  </div>
   <div class="sticks hidden" id="sticks">
-    <div class="stick" id="stick-l" data-stick="l"><div class="knob"></div></div>
+    <div class="stick" id="stick-l" data-stick="l"><span class="stick-label" data-i18n="stickMove">移动</span><div class="knob"></div></div>
     <button type="button" class="dash" id="dash-btn" data-i18n="dash">冲</button>
     <button type="button" class="flare" id="flare-btn" data-i18n="flare">焰弹</button>
-    <div class="stick" id="stick-r" data-stick="r"><div class="knob"></div></div>
+    <div class="stick" id="stick-r" data-stick="r"><span class="stick-label" data-i18n="stickAim">瞄准</span><div class="knob"></div></div>
   </div>
   <div class="overlay" id="overlay">
     <section class="card" id="screen-menu">
