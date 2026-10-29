@@ -112,8 +112,9 @@
       + '快来加入我的群组公会，一起下井打榜！';
   }
 
-  function shareLink(target) {
-    return 'https://t.me/share/url?url=' + encodeURIComponent(target) + '&text=' + encodeURIComponent(shareMessage(target));
+  function shareLink(target, text) {
+    var body = text || shareMessage(target);
+    return 'https://t.me/share/url?url=' + encodeURIComponent(target) + '&text=' + encodeURIComponent(body);
   }
 
   function rallyText(mine, rival) {

@@ -19,7 +19,7 @@
     <div class="hud-row">
       <span id="floor-label">第 1 层</span>
       <span class="oils" id="oils"></span>
-      <button type="button" class="icon-btn" id="pause-btn" aria-label="暂停">暂停</button>
+      <button type="button" class="icon-btn" id="pause-btn" data-i18n="pause" data-i18n-aria="pause" aria-label="暂停">暂停</button>
     </div>
     <div class="hud-row sub">
       <span id="res"></span>
@@ -32,8 +32,8 @@
   <p class="coach hidden" id="coach"></p>
   <div class="sticks hidden" id="sticks">
     <div class="stick" id="stick-l" data-stick="l"><div class="knob"></div></div>
-    <button type="button" class="dash" id="dash-btn">冲</button>
-    <button type="button" class="flare" id="flare-btn">焰弹</button>
+    <button type="button" class="dash" id="dash-btn" data-i18n="dash">冲</button>
+    <button type="button" class="flare" id="flare-btn" data-i18n="flare">焰弹</button>
     <div class="stick" id="stick-r" data-stick="r"><div class="knob"></div></div>
   </div>
   <div class="overlay" id="overlay">
@@ -47,84 +47,85 @@
         <span class="bar"><i id="menu-growth-fill"></i></span>
       </button>
       <div class="actions">
-        <button type="button" class="btn primary" id="btn-continue">继续下井</button>
-        <button type="button" class="btn primary" id="btn-start">开始下井</button>
-        <button type="button" class="btn" id="btn-menu-invite">邀请好友</button>
-        <button type="button" class="btn" id="btn-shop">灯塔商店</button>
-        <button type="button" class="btn" id="btn-growth">新星里程碑</button>
-        <button type="button" class="btn ghost" id="btn-help">怎么操作</button>
+        <button type="button" class="btn primary" id="btn-continue" data-i18n="continueRun">继续下井</button>
+        <button type="button" class="btn primary" id="btn-start" data-i18n="start">开始下井</button>
+        <button type="button" class="btn" id="btn-menu-invite" data-i18n="invite">邀请好友</button>
+        <button type="button" class="btn" id="btn-shop" data-i18n="shop">灯塔商店</button>
+        <button type="button" class="btn" id="btn-growth" data-i18n="growth">新星里程碑</button>
+        <button type="button" class="btn ghost" id="btn-help" data-i18n="help">怎么操作</button>
+        <button type="button" class="btn ghost" id="btn-lang">简体</button>
       </div>
     </section>
     <section class="card hidden" id="screen-growth">
-      <h2>新星里程碑</h2>
-      <p class="lead" id="growth-copy">进来就有基础进度。做完剩下的任务，领取早期测试者星标。</p>
+      <h2 data-i18n="growthTitle">新星里程碑</h2>
+      <p class="lead" id="growth-copy" data-i18n="growthLead">进来就有基础进度。做完剩下的任务，领取早期测试者星标。</p>
       <div class="bar" aria-hidden="true"><i id="growth-fill"></i></div>
       <p class="meta-line" id="growth-points">2 / 8</p>
       <ul class="help" id="growth-tasks"></ul>
-      <label class="squad-line">常待的公开群
+      <label class="squad-line"><span data-i18n="squadLabel">常待的公开群</span>
         <input id="squad-input" maxlength="32" placeholder="@GroupUsername" autocomplete="off">
       </label>
       <p class="meta-line" id="squad-board"></p>
       <div class="actions">
-        <button type="button" class="btn primary" id="btn-invite">邀请好友</button>
-        <button type="button" class="btn" id="btn-channel">打开官方频道</button>
-        <button type="button" class="btn" id="btn-claim">领取星标</button>
-        <button type="button" class="btn" id="btn-squad">加入这个群的公会</button>
-        <button type="button" class="btn ghost" id="growth-back">返回</button>
+        <button type="button" class="btn primary" id="btn-invite" data-i18n="inviteBtn">邀请好友</button>
+        <button type="button" class="btn" id="btn-channel" data-i18n="channel">打开官方频道</button>
+        <button type="button" class="btn" id="btn-claim" data-i18n="claim">领取星标</button>
+        <button type="button" class="btn" id="btn-squad" data-i18n="joinSquad">加入这个群的公会</button>
+        <button type="button" class="btn ghost" id="growth-back" data-i18n="back">返回</button>
       </div>
     </section>
     <section class="card hidden" id="screen-rally">
-      <h2>应援号召</h2>
+      <h2 data-i18n="rallyTitle">应援号召</h2>
       <p class="lead" id="rally-text"></p>
       <div class="actions">
-        <button type="button" class="btn primary" id="btn-rally">发给群友</button>
-        <button type="button" class="btn ghost" id="rally-back">先继续</button>
+        <button type="button" class="btn primary" id="btn-rally" data-i18n="rallySend">发给群友</button>
+        <button type="button" class="btn ghost" id="rally-back" data-i18n="rallyLater">先继续</button>
       </div>
     </section>
     <section class="card hidden" id="screen-shop">
-      <h2>灯塔商店</h2>
+      <h2 data-i18n="shopTitle">灯塔商店</h2>
       <p class="meta-line" id="shop-ash">灰烬 0</p>
       <div id="shop-list"></div>
-      <button type="button" class="btn" id="shop-back">返回</button>
+      <button type="button" class="btn" id="shop-back" data-i18n="back">返回</button>
     </section>
     <section class="card hidden" id="screen-help">
-      <h2>怎么操作</h2>
+      <h2 data-i18n="helpTitle">怎么操作</h2>
       <ul class="help">
-        <li>第一局会按顺序教：移动、瞄准、冲刺、捡烬、焰弹。提示出现在画面下方。</li>
-        <li>前两层看你的战绩和当下灯油。连着倒在井口会放轻；灯油见底，下一间也会放轻。打得顺，房间会再加紧。</li>
-        <li>左边移动，右边瞄准。瞄准时会自己喷出火花。</li>
-        <li>电脑用 WASD 移动，Shift 或 K 冲刺，鼠标或方向键瞄准射击，空格放焰弹。</li>
-        <li>打中会跳数字。暴击停一下，灯桶被打炸开会伤周围。</li>
-        <li>每间战斗房规矩不同：虫巢、脆窑、矿脉、单挑、余潮。带圈的是精英。</li>
-        <li>灯蛾会绕圈再扑，钟壳会敲出一圈火星。井约会改变这一层的捡取、回血或伤害。</li>
-        <li>焰弹伤这一间的敌人，并清掉飞过来的火星。</li>
-        <li>灯台上有一枚火印，用来开库房。货摊上的东西用烬买。</li>
-        <li>第二层起地上有烫人的裂隙，越深越多。灰傀会先缩一下，再冲过来。</li>
-        <li>井没有底。窑主、钟匠、蛾后、烬王每三层轮一次，越深血越厚，身边的怪也更多。</li>
-        <li>怪物潮要连清几波。福利房随便拿，两把武器里选一把：芯火、烬矛、扇烬、回灯。</li>
-        <li>天赋只能选一个。赌桌踩上去，有赢有输。</li>
-        <li>新星里程碑用邀请和分享换游戏内积分。领到的是星标徽章，多一发开局焰弹，不能提现。</li>
-        <li>试炼更难，清完必有道具。灯龛的两件东西只能拿一件。</li>
-        <li>火花能打掉飞来的火星。短时间连杀会掉连烬。灰壳死时会炸开。</li>
-        <li class="credit">💡 技术致敬：本游戏基于 Cursor AI 强大逻辑构建。独立开发者的终极生产力工具。</li>
+        <li data-i18n="help1">第一局会按顺序教：移动、瞄准、冲刺、捡烬、焰弹。提示出现在画面下方。</li>
+        <li data-i18n="help2">前两层看你的战绩和当下灯油。连着倒在井口会放轻；灯油见底，下一间也会放轻。打得顺，房间会再加紧。</li>
+        <li data-i18n="help3">左边移动，右边瞄准。瞄准时会自己喷出火花。</li>
+        <li data-i18n="help4">电脑用 WASD 移动，Shift 或 K 冲刺，鼠标或方向键瞄准射击，空格放焰弹。</li>
+        <li data-i18n="help5">打中会跳数字。暴击停一下，灯桶被打炸开会伤周围。</li>
+        <li data-i18n="help6">每间战斗房规矩不同：虫巢、脆窑、矿脉、单挑、余潮。带圈的是精英。</li>
+        <li data-i18n="help7">灯蛾会绕圈再扑，钟壳会敲出一圈火星。井约会改变这一层的捡取、回血或伤害。</li>
+        <li data-i18n="help8">焰弹伤这一间的敌人，并清掉飞过来的火星。</li>
+        <li data-i18n="help9">灯台上有一枚火印，用来开库房。货摊上的东西用烬买。</li>
+        <li data-i18n="help10">第二层起地上有烫人的裂隙，越深越多。灰傀会先缩一下，再冲过来。</li>
+        <li data-i18n="help11">井没有底。窑主、钟匠、蛾后、烬王每三层轮一次，越深血越厚，身边的怪也更多。</li>
+        <li data-i18n="help12">怪物潮要连清几波。福利房随便拿，两把武器里选一把：芯火、烬矛、扇烬、回灯。</li>
+        <li data-i18n="help13">天赋只能选一个。赌桌踩上去，有赢有输。</li>
+        <li data-i18n="help14">新星里程碑用邀请和分享换游戏内积分。领到的是星标徽章，多一发开局焰弹，不能提现。</li>
+        <li data-i18n="help15">试炼更难，清完必有道具。灯龛的两件东西只能拿一件。</li>
+        <li data-i18n="help16">火花能打掉飞来的火星。短时间连杀会掉连烬。灰壳死时会炸开。</li>
+        <li class="credit" data-i18n="help17">💡 技术致敬：本游戏基于 Cursor AI 强大逻辑构建。独立开发者的终极生产力工具。</li>
       </ul>
-      <button type="button" class="btn" id="help-back">返回</button>
+      <button type="button" class="btn" id="help-back" data-i18n="back">返回</button>
     </section>
     <section class="card hidden" id="screen-pause">
-      <h2>灯火暂歇</h2>
-      <p class="lead" id="pause-text">这一局还在。</p>
+      <h2 data-i18n="pauseTitle">灯火暂歇</h2>
+      <p class="lead" id="pause-text" data-i18n="pauseIdle">这一局还在。</p>
       <div class="actions">
-        <button type="button" class="btn primary" id="btn-resume">继续</button>
-        <button type="button" class="btn ghost" id="btn-quit">回灯塔</button>
+        <button type="button" class="btn primary" id="btn-resume" data-i18n="resume">继续</button>
+        <button type="button" class="btn ghost" id="btn-quit" data-i18n="quit">回灯塔</button>
       </div>
     </section>
     <section class="card hidden" id="screen-revive">
-      <h2>灯快灭了</h2>
-      <p class="lead">看完一段广告，灯油加满，原地再来。每局一次。没看完就没有奖励。</p>
+      <h2 data-i18n="reviveTitle">灯快灭了</h2>
+      <p class="lead" data-i18n="reviveLead">看完一段广告，灯油加满，原地再来。每局一次。没看完就没有奖励。</p>
       <p class="ad-note" id="revive-note"></p>
       <div class="actions">
-        <button type="button" class="btn primary" id="btn-revive">看广告复活</button>
-        <button type="button" class="btn ghost" id="btn-give-up">就到这里</button>
+        <button type="button" class="btn primary" id="btn-revive" data-i18n="reviveBtn">看广告复活</button>
+        <button type="button" class="btn ghost" id="btn-give-up" data-i18n="giveUp">就到这里</button>
       </div>
     </section>
     <section class="card hidden" id="screen-end">
@@ -132,10 +133,10 @@
       <p class="lead" id="end-text"></p>
       <p class="ad-note" id="end-note"></p>
       <div class="actions">
-        <button type="button" class="btn primary" id="end-double">看广告灰烬翻倍</button>
-        <button type="button" class="btn primary" id="end-again">再下一局</button>
-        <button type="button" class="btn" id="end-invite">邀请好友，领星标</button>
-        <button type="button" class="btn ghost" id="end-menu">回灯塔</button>
+        <button type="button" class="btn primary" id="end-double" data-i18n="doubleBtn">看广告灰烬翻倍</button>
+        <button type="button" class="btn primary" id="end-again" data-i18n="again">再下一局</button>
+        <button type="button" class="btn" id="end-invite" data-i18n="endInvite">邀请好友，领星标</button>
+        <button type="button" class="btn ghost" id="end-menu" data-i18n="endMenu">回灯塔</button>
       </div>
     </section>
   </div>
@@ -150,6 +151,8 @@ window.CINDERWELL_TG = {
 window.CINDERWELL_ADS = {
   revive: '56423',
   double: '56423',
+  interstitial: '',
+  task: '',
   debug: false
 };
 </script>
@@ -157,6 +160,7 @@ window.CINDERWELL_ADS = {
 <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <script src="build-info.js"></script>
 <script src="sdk/tgmp-sdk.js"></script>
+<script src="i18n.js"></script>
 <script src="ads.js"></script>
 <script src="logic.js"></script>
 <script src="growth.js"></script>

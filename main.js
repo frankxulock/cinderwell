@@ -36,9 +36,36 @@
   var growthBook = {};
   var pendingChannel = false;
 
+  var I18N = window.CinderwellI18n;
+
   function $(id) { return document.getElementById(id); }
 
+  function t(key, vars) { return I18N ? I18N.t(key, vars) : key; }
+  function g(text) { return I18N ? I18N.game(text) : (text == null ? '' : String(text)); }
+  function bannerOf(text) {
+    var match = /^连 (\d+)$/.exec(text || '');
+    if (match) return t('chainN', { n: match[1] });
+    return g(text);
+  }
+
+  function refreshCopy() {
+    if (I18N) I18N.apply(document);
+    if ($('btn-lang')) $('btn-lang').textContent = t('langName');
+    if (screen === 'menu') paintMenu();
+    else if (screen === 'shop') paintShop();
+    else if (screen === 'growth') paintGrowth();
+    else if (screen === 'pause' && $('pause-text')) $('pause-text').textContent = pauseCopy();
+  }
+
+  function shareUrl() {
+    var url = inviteTarget();
+    var text = t('shareTitle') + '\n' + t('shareText') + '\n' + t('shareCta', { url: url });
+    return G.shareLink(url, text);
+  }
+
   function show(name) {
+    if (I18N) I18N.apply(document);
+    if ($('btn-lang')) $('btn-lang').textContent = t('langName');
     screen = name;
     ['menu', 'shop', 'help', 'pause', 'revive', 'end', 'growth', 'rally'].forEach(function (n) {
       $('screen-' + n).classList.toggle('hidden', n !== name);
@@ -66,10 +93,16 @@
   }
 
   function pauseCopy() {
-    if (!run) return '这一局还在。';
-    var names = (run.gear || []).map(function (id) { return L.itemName(id); });
-    return L.floorName(run.floor) + ' · 灯油 ' + run.hp + '/' + run.maxHp +
-      ' · 烬 ' + run.cinders + '。' + (names.length ? names.join('、') : '还没有道具') + '。';
+    if (!run) return t('pauseIdle');
+    var names = (run.gear || []).map(function (id) { return g(L.itemName(id)); });
+    var joiner = I18N && I18N.getLang() === 'en' ? ', ' : '、';
+    return t('pauseLine', {
+      floor: g(L.floorName(run.floor)),
+      hp: run.hp,
+      max: run.maxHp,
+      cinders: run.cinders,
+      gear: names.length ? names.join(joiner) : t('noGear')
+    });
   }
 
   function setText(id, text) {
@@ -80,24 +113,19 @@
 
   function paintMenu() {
     ensureGrowth();
-    $('menu-best').textContent = '最高 ' + (meta.best || 0);
-    $('menu-ash').textContent = '灰烬 ' + (meta.ash || 0);
+    $('menu-best').textContent = t('best', { n: meta.best || 0 });
+    $('menu-ash').textContent = t('ash', { n: meta.ash || 0 });
     var ease = L.easeOf(meta);
     var teaching = ease <= 1 && !meta.guideDone;
     var lead = $('menu-lead');
-    if (lead) {
-      lead.textContent = teaching
-        ? '第一局会教你走、瞄准和冲刺。前两层按灯油和战绩放轻，打顺了再加紧。'
-        : (ease <= 1
-          ? '前两层仍按灯油和战绩调整。连着倒下会放轻，打得顺就加紧。'
-          : '井没有底。每三层换一种窑主，越往下血越厚。');
-    }
-    if ($('btn-start')) $('btn-start').textContent = teaching ? '开始教学局' : '开始下井';
+    if (lead) lead.textContent = teaching ? t('leadTeach') : (ease <= 1 ? t('leadEasy') : t('leadHard'));
+    if ($('btn-start')) $('btn-start').textContent = teaching ? t('startTeach') : t('start');
+    if ($('btn-lang')) $('btn-lang').textContent = t('langName');
     $('btn-continue').classList.toggle('hidden', !hasRun());
     var got = G.points(meta.growth);
     var goal = milestoneGoal();
     var shown = Math.min(got, goal);
-    $('menu-growth-label').textContent = '新星里程碑 ' + shown + '/' + goal + (meta.badge ? ' · 星标已领' : '');
+    $('menu-growth-label').textContent = t(meta.badge ? 'milestoneBadge' : 'milestone', { now: shown, goal: goal });
     $('menu-growth-fill').style.width = Math.round(shown / goal * 100) + '%';
   }
 
@@ -105,7 +133,7 @@
     ensureGrowth();
     meta.growth.shared = true;
     persist();
-    openShare(G.shareLink(inviteTarget()));
+    openShare(shareUrl());
     if (screen === 'growth') paintGrowth();
     if (screen === 'menu') paintMenu();
   }
@@ -226,11 +254,19 @@
     T.reportEvent(kind === 'win' ? 'game.win' : 'game.over', { score: score, floor: run.floor });
     run = null;
     persist();
-    $('end-title').textContent = kind === 'win' ? '出井了' : '灯灭了';
-    $('end-text').textContent = (kind === 'win' ? '窑主熄了，你走出' + where + '。' : '灯油烧尽，停在' + where + '。') +
-      ' 得分 ' + score + '，身上还有烬 ' + held + '，带回灰烬 ' + gained + '。';
-    $('end-double').classList.toggle('hidden', gained <= 0 || !adsReady('double'));
-    show('end');
+    function reveal() {
+      $('end-title').textContent = kind === 'win' ? t('endWin') : t('endDead');
+      $('end-text').textContent = t(kind === 'win' ? 'endWinText' : 'endDeadText', {
+        where: g(where), score: score, held: held, gained: gained
+      });
+      $('end-double').classList.toggle('hidden', gained <= 0 || !adsReady('double'));
+      show('end');
+    }
+    var ads = window.CinderwellAds;
+    if (ads && ads.configured('interstitial')) {
+      var timed = new Promise(function (resolve) { setTimeout(resolve, 20000); });
+      Promise.race([ads.interstitial().catch(function () {}), timed]).then(reveal, reveal);
+    } else reveal();
   }
 
   function adsReady(placement) {
@@ -246,13 +282,13 @@
     var ads = window.CinderwellAds;
     if (adBusy || !ads) return;
     if (!ads.configured(placement)) {
-      adNote(noteId, '广告位还没填，看完真广告才会发奖励。');
+      adNote(noteId, t('adEmpty'));
       return;
     }
     adBusy = true;
     btn.disabled = true;
     var label = btn.textContent;
-    btn.textContent = '广告播放中';
+    btn.textContent = t('adPlaying');
     adNote(noteId, '');
     if (audio && audio.state === 'running') audio.suspend();
     ads.rewarded(placement).then(function (result) {
@@ -261,21 +297,22 @@
       btn.textContent = label;
       if (audio && audio.state === 'suspended') audio.resume();
       if (result && result.ok) onReward();
-      else if (result && result.reason === 'skip') adNote(noteId, '没看完，这次没有奖励。');
-      else adNote(noteId, '广告没播成，这次没有奖励。');
+      else if (result && result.reason === 'skip') adNote(noteId, t('adSkip'));
+      else adNote(noteId, t('adFail'));
     });
   }
 
   function setupTelegram() {
     var tg = window.Telegram && window.Telegram.WebApp;
-    if (!tg) return;
-    try {
-      tg.ready();
-      tg.expand();
-      if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
-      tg.setHeaderColor('#100e14');
-      tg.setBackgroundColor('#100e14');
-    } catch (e) {}
+    if (tg) {
+      try {
+        tg.ready();
+        tg.expand();
+        if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+        tg.setHeaderColor('#100e14');
+        tg.setBackgroundColor('#100e14');
+      } catch (e) {}
+    }
     if (window.CinderwellAds && window.CinderwellAds.prepare) window.CinderwellAds.prepare();
   }
 
@@ -441,14 +478,14 @@
   }
 
   function paintHud() {
-    setText('floor-label', L.floorName(run.floor) + ' · 第 ' + run.floor + ' 层');
+    setText('floor-label', t('floorLabel', { name: g(L.floorName(run.floor)), n: run.floor }));
     setText('score', String(run.score));
-    setText('res', '烬 ' + run.cinders + '   火印 ' + run.seals + '   焰弹 ' + run.flares);
-    setText('gear', L.itemName(run.weapon || 'spark') + ((run.gear && run.gear.length) ? ' · ' + run.gear.map(function (id) { return L.itemName(id); }).join(' · ') : ''));
+    setText('res', t('res', { cinders: run.cinders, seals: run.seals, flares: run.flares }));
+    setText('gear', g(L.itemName(run.weapon || 'spark')) + ((run.gear && run.gear.length) ? ' · ' + run.gear.map(function (id) { return g(L.itemName(id)); }).join(' · ') : ''));
     var room = run.rooms[run.roomId];
-    var law = room && room.law ? L.lawName(room.law) : '';
-    var pact = L.pactName(run.pact);
-    var chain = run.chain >= 2 ? '连 ' + run.chain : '';
+    var law = room && room.law ? g(L.lawName(room.law)) : '';
+    var pact = g(L.pactName(run.pact));
+    var chain = run.chain >= 2 ? t('chainN', { n: run.chain }) : '';
     setText('law', [pact, law, chain].filter(Boolean).join('  ·  '));
     $('oils').classList.toggle('low', run.hp > 0 && run.hp <= 1);
     var dashBtn = $('dash-btn');
@@ -461,9 +498,10 @@
     }
     var toast = $('toast');
     if (run.toastT > 0 && run.toast) {
-      if (toast.dataset.v !== run.toast) {
-        toast.dataset.v = run.toast;
-        toast.textContent = run.toast;
+      var toastMark = (I18N ? I18N.getLang() : '') + '|' + run.toast;
+      if (toast.dataset.v !== toastMark) {
+        toast.dataset.v = toastMark;
+        toast.textContent = g(run.toast);
         toast.classList.remove('hidden');
         toast.style.animation = 'none';
         void toast.offsetWidth;
@@ -475,7 +513,7 @@
       var tip = run.guide && run.guide.on && run.guideText ? run.guideText : '';
       coach.classList.toggle('hidden', !tip);
       coach.classList.toggle('desk', $('sticks').classList.contains('hidden'));
-      if (tip) setText('coach', tip);
+      if (tip) setText('coach', g(tip));
     }
   }
 
@@ -838,7 +876,7 @@
       ctx2.fillStyle = '#ffd089';
       ctx2.font = 'bold 26px sans-serif';
       ctx2.textAlign = 'center';
-      ctx2.fillText(fx.bannerText, W / 2, H / 2 - 78);
+      ctx2.fillText(bannerOf(fx.bannerText), W / 2, H / 2 - 78);
       ctx2.globalAlpha = 1;
     }
     if (fx.flash > 0) {
@@ -866,7 +904,7 @@
       ctx2.fillStyle = '#ffd089';
       ctx2.font = '11px sans-serif';
       ctx2.textAlign = 'center';
-      ctx2.fillText('灯桶', b.x, b.y + 4);
+      ctx2.fillText(g('灯桶'), b.x, b.y + 4);
     }
   }
 
@@ -877,7 +915,7 @@
       ctx2.globalAlpha = Math.max(0, f.life / 0.7);
       ctx2.fillStyle = f.kind === 'crit' ? '#ff5d7a' : f.kind === 'heal' ? '#9dffb0' : f.kind === 'dash' ? '#d7ecff' : '#fff4d2';
       ctx2.font = (f.kind === 'crit' || f.kind === 'kill' ? 'bold 18px' : 'bold 14px') + ' sans-serif';
-      ctx2.fillText(f.text, f.x, f.y);
+      ctx2.fillText(g(f.text), f.x, f.y);
     }
     ctx2.globalAlpha = 1;
   }
@@ -908,7 +946,7 @@
     else if (room.kind === 'trial') text = room.cleared ? '试炼清了' : '试炼 · 清完有奖';
     else if (room.kind === 'shop') text = '货摊 · 用烬换';
     else if (room.kind === 'cache') text = room.unlocked ? '库房' : '库房 · 要火印';
-    else if (room.kind === 'boss') text = room.cleared ? (L.bossName(room.bossKind) + '熄了') : '';
+    else if (room.kind === 'boss') text = room.cleared ? t('bossDown', { name: g(L.bossName(room.bossKind)) }) : '';
     else if (room.kind === 'combat') text = room.cleared ? '' : (L.lawName(room.law) || '战斗');
     else if (room.kind === 'tide') text = room.cleared ? '潮退了' : '怪物潮 · 还会再来';
     else if (room.kind === 'gift') text = '福利 · 拿东西，武器选一把';
@@ -917,16 +955,16 @@
     ctx2.fillStyle = 'rgba(244,234,215,0.86)';
     ctx2.font = '14px sans-serif';
     ctx2.textAlign = 'center';
-    if (text) ctx2.fillText(text, W / 2, 46);
+    if (text) ctx2.fillText(room.kind === 'boss' ? text : g(text), W / 2, 46);
     if (room.kind === 'start' && run.guide && run.guide.on && run.guide.step === 'move' && room.guideDir) {
       var way = { n: '上方', s: '下方', w: '左边', e: '右边' }[room.guideDir] || '亮着';
       ctx2.fillStyle = 'rgba(255, 208, 137, 0.92)';
       ctx2.font = '13px sans-serif';
-      ctx2.fillText('先往' + way + '走', W / 2, H - 42);
+      ctx2.fillText(g('先往' + way + '走'), W / 2, H - 42);
     } else if (room.kind === 'start' && run.time < 6) {
       ctx2.fillStyle = 'rgba(244,234,215,0.72)';
       ctx2.font = '13px sans-serif';
-      ctx2.fillText('WASD 走，鼠标瞄准。Shift 冲刺，空格焰弹。', W / 2, H - 42);
+      ctx2.fillText(g('WASD 走，鼠标瞄准。Shift 冲刺，空格焰弹。'), W / 2, H - 42);
     }
   }
 
@@ -994,18 +1032,18 @@
     if (p.kind === 'item' || p.kind === 'talent' || p.kind === 'weapon') {
       var label = p.kind === 'talent' ? p.talent : p.kind === 'weapon' ? p.weapon : p.item;
       ctx2.fillStyle = '#f4ead7';
-      ctx2.fillText(L.itemName(label), p.x, line);
+      ctx2.fillText(g(L.itemName(label)), p.x, line);
       ctx2.fillStyle = '#b3a89a';
-      ctx2.fillText(L.itemDesc(label), p.x, line + 13);
+      ctx2.fillText(g(L.itemDesc(label)), p.x, line + 13);
       line += 26;
     }
     if (p.kind === 'wager') {
       ctx2.fillStyle = '#e7b0e4';
-      ctx2.fillText('赌一把', p.x, line);
+      ctx2.fillText(g('赌一把'), p.x, line);
     }
     if (p.price) {
       ctx2.fillStyle = '#ffd089';
-      ctx2.fillText((p.sale ? '特价 ' : '') + p.price + ' 烬', p.x, line);
+      ctx2.fillText(t(p.sale ? 'salePrice' : 'price', { n: p.price }), p.x, line);
     }
   }
 
@@ -1120,7 +1158,7 @@
       ctx2.fillStyle = '#ffd089';
       ctx2.font = '11px sans-serif';
       ctx2.textAlign = 'center';
-      ctx2.fillText(e.trait === 'armored' ? '硬' : '裂', vis.x, vis.y - e.r - 8);
+      ctx2.fillText(g(e.trait === 'armored' ? '硬' : '裂'), vis.x, vis.y - e.r - 8);
     }
     ctx2.fillStyle = 'rgba(0,0,0,0.35)';
     ctx2.fillRect(vis.x - e.r, vis.y + e.r + 4, e.r * 2, 3);
@@ -1279,14 +1317,14 @@
   }
 
   function paintShop() {
-    $('shop-ash').textContent = '灰烬 ' + (meta.ash || 0);
+    $('shop-ash').textContent = t('shopAsh', { n: meta.ash || 0 });
     var html = '';
     L.SHOP.forEach(function (item) {
       var lv = meta[item.key] || 0;
       var maxed = lv >= item.max;
-      html += '<div class="shop-item"><div><strong>' + item.name + '</strong><p>' + item.desc +
+      html += '<div class="shop-item"><div><strong>' + g(item.name) + '</strong><p>' + g(item.desc) +
         ' · ' + lv + '/' + item.max + '</p></div><button type="button" data-buy="' + item.key + '"' +
-        (maxed ? ' disabled' : '') + '>' + (maxed ? '满了' : L.price(meta, item.key) + ' 灰烬') + '</button></div>';
+        (maxed ? ' disabled' : '') + '>' + (maxed ? t('shopMax') : t('shopBuy', { n: L.price(meta, item.key) })) + '</button></div>';
     });
     $('shop-list').innerHTML = html;
   }
@@ -1499,10 +1537,10 @@
     ensureGrowth();
     openExternal(cursorUrl());
     if (L.grantCursor(meta)) {
-      $('growth-copy').textContent = '冥想完成。灰烬 +500。下一局芯火得到 AI 强化。';
+      $('growth-copy').textContent = t('cursorDone');
       blip(880, 0.1, 'triangle', 0.04);
     } else {
-      $('growth-copy').textContent = '冥想已经完成。奖励不会再发一次。';
+      $('growth-copy').textContent = t('cursorAlready');
     }
     persist();
     paintMenu();
@@ -1518,7 +1556,7 @@
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(url).catch(function () {});
     }
-    $('growth-copy').textContent = '邀请链接已复制，贴到聊天里即可。';
+    $('growth-copy').textContent = t('copied');
   }
 
   function paintGrowth() {
@@ -1527,33 +1565,33 @@
     var goal = milestoneGoal();
     var pct = Math.round(Math.min(1, got / goal) * 100);
     $('growth-fill').style.width = pct + '%';
-    $('growth-points').textContent = Math.min(got, goal) + ' / ' + goal + (meta.badge ? ' · 星标已领' : '');
+    $('growth-points').textContent = Math.min(got, goal) + ' / ' + goal + (meta.badge ? ' · ' + t('claim') : '');
     var tasks = [
-      '基础进度已计入',
-      meta.growth.shared ? '邀请已经发出' : '发出一次邀请',
-      meta.growth.friends > 0 ? '已有好友从链接进来' : '一位好友从你的链接进来',
-      meta.growth.premium > 0 ? 'Premium 好友已加成' : 'Premium 好友会再加一截'
+      t('taskBase'),
+      meta.growth.shared ? t('taskShared') : t('taskShare'),
+      meta.growth.friends > 0 ? t('taskFriend') : t('taskNeedFriend'),
+      meta.growth.premium > 0 ? t('taskPremium') : t('taskNeedPremium')
     ];
-    if (channelName()) tasks.splice(1, 0, meta.growth.channel ? '已打开官方频道' : '打开官方频道');
+    if (channelName()) tasks.splice(1, 0, meta.growth.channel ? t('taskChannelOn') : t('taskChannel'));
     var cursorDone = !!meta.cursor;
     var cursor = '<li><button type="button" class="task-link" id="btn-cursor">'
-      + (cursorDone ? '🔮 AI 冥想已完成' : G.CURSOR_NAME)
-      + '</button><p class="cursor-note">' + G.CURSOR_DESC + '</p></li>';
+      + (cursorDone ? t('cursorDoneBtn') : g(G.CURSOR_NAME))
+      + '</button><p class="cursor-note">' + g(G.CURSOR_DESC) + '</p></li>';
     $('growth-tasks').innerHTML = tasks.map(function (line) { return '<li>' + line + '</li>'; }).join('') + cursor;
     $('btn-channel').classList.toggle('hidden', !channelName());
     $('btn-claim').disabled = !(got >= goal && !meta.badge);
     $('squad-input').value = meta.growth.squad ? ('@' + meta.growth.squad) : '';
     var rows = squadRows().sort(function (a, b) { return (b.score || 0) - (a.score || 0); }).slice(0, 5);
     $('squad-board').textContent = rows.length
-      ? rows.map(function (row, i) { return (i + 1) + '. @' + row.slug + ' ' + (row.score || 0); }).join('   ')
-      : '还没有公会积分';
+      ? rows.map(function (row, i) { return t('squadRow', { rank: i + 1, slug: row.slug, score: row.score || 0 }); }).join('   ')
+      : t('noSquad');
   }
 
   function maybeRally() {
     ensureGrowth();
     var note = G.challenge(squadRows(), meta.growth.squad, meta.growth.rankSeen || 0);
     if (!note || screen === 'rally' || meta.growth.rallyMute === note.rank) return;
-    $('rally-text').textContent = note.text;
+    $('rally-text').textContent = t(note.rival ? 'rallyRival' : 'rally', { mine: note.mine, rival: note.rival });
     meta.growth.pendingRank = note.rank;
     show('rally');
   }
@@ -1615,6 +1653,12 @@
     });
     T.on(window, 'pointerup', function () { pointer.down = false; });
     T.on($('btn-start'), 'click', function () { startRun(true); });
+    T.on($('btn-lang'), 'click', function () {
+      if (!I18N) return;
+      meta.lang = I18N.cycle();
+      persist();
+      refreshCopy();
+    });
     T.on($('btn-continue'), 'click', function () { startRun(false); });
     T.on($('btn-shop'), 'click', function () { show('shop'); });
     T.on($('btn-menu-growth'), 'click', function () { show('growth'); });
@@ -1635,7 +1679,7 @@
       ensureGrowth();
       if (G.points(meta.growth) < milestoneGoal() || meta.badge) return;
       if (forgedIdentity()) {
-        $('growth-copy').textContent = '这不是 Telegram 里的真实身份，星标不发。';
+        $('growth-copy').textContent = t('forged');
         return;
       }
       meta.badge = 1;
@@ -1643,14 +1687,14 @@
       persist();
       if (signedInitData()) reportTrack('claim');
       paintMenu();
-      $('growth-copy').textContent = '星标已领。下一局多一发焰弹，灰烬 +12。';
+      $('growth-copy').textContent = t('claimed');
       paintGrowth();
     });
     T.on($('btn-squad'), 'click', function () {
       ensureGrowth();
       var name = G.slug($('squad-input').value);
       if (!name) {
-        $('growth-copy').textContent = '请填公开群用户名，例如 @Cinderwell。';
+        $('growth-copy').textContent = t('squadNeed');
         return;
       }
       meta.growth.squad = name;
@@ -1658,7 +1702,7 @@
       persist();
       syncGrowth();
       paintGrowth();
-      $('growth-copy').textContent = '已加入 @' + name + '。积分按你的最高分计入，不会扣别人的分。';
+      $('growth-copy').textContent = t('squadJoined', { name: name });
     });
     T.on($('growth-tasks'), 'click', function (e) {
       var node = e.target;
@@ -1669,7 +1713,7 @@
     });
     T.on($('btn-rally'), 'click', function () {
       ensureGrowth();
-      var url = G.shareLink(inviteTarget());
+      var url = shareUrl();
       meta.growth.rankSeen = meta.growth.pendingRank || meta.growth.rankSeen;
       meta.growth.rallyMute = meta.growth.pendingRank || meta.growth.rallyMute;
       persist();
@@ -1733,7 +1777,7 @@
         if (lastGained <= 0) return;
         meta.ash = (meta.ash || 0) + lastGained;
         T.reportEvent('ad.reward', { kind: 'double', ash: lastGained });
-        $('end-text').textContent += ' 翻倍后再得 ' + lastGained + '。';
+        $('end-text').textContent += t('doubled', { n: lastGained });
         lastGained = 0;
         $('end-double').classList.add('hidden');
         persist();
@@ -1780,6 +1824,7 @@
       syncGrowth();
       var b = (ctx && ctx.build) || window.TGMP_BUILD || {};
       $('badge').textContent = b.label || (b.version ? 'v' + b.version : '灯塔');
+      if (I18N) meta.lang = I18N.boot(meta.lang);
       setupTelegram();
       bind();
       loadArt();

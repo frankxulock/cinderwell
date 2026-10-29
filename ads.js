@@ -6,15 +6,24 @@
   var cfg = window.CINDERWELL_ADS || {};
   var blocks = {
     revive: digits(cfg.revive || cfg.blockId),
-    double: digits(cfg.double || cfg.blockId)
+    double: digits(cfg.double || cfg.blockId),
+    interstitial: slotId(cfg.interstitial, /^int-\d+$/)
   };
   var debug = !!cfg.debug;
   var controllers = {};
   var busy = false;
 
   function digits(value) {
+    return slotId(value, /^\d+$/);
+  }
+
+  function slotId(value, pattern) {
     var text = String(value || '').trim();
-    return /^\d+$/.test(text) ? text : '';
+    return pattern.test(text) ? text : '';
+  }
+
+  function taskId() {
+    return slotId(cfg.task, /^task-[\w-]+$/);
   }
 
   function controller(placement) {
@@ -25,7 +34,7 @@
         controllers[id] = window.Adsgram.init({
           blockId: id,
           debug: debug,
-          debugBannerType: 'RewardedVideo'
+          debugBannerType: String(id).indexOf('int-') === 0 ? 'FullscreenMedia' : 'RewardedVideo'
         });
       } catch (e) {
         controllers[id] = null;
@@ -35,7 +44,7 @@
   }
 
   function prepare() {
-    ['revive', 'double'].forEach(function (placement) {
+    ['revive', 'double', 'interstitial'].forEach(function (placement) {
       var ad = controller(placement);
       if (ad && typeof ad.load === 'function') {
         try { ad.load(); } catch (e) {}
@@ -43,7 +52,7 @@
     });
   }
 
-  function rewarded(placement) {
+  function show(placement, allowClose) {
     placement = blocks[placement] ? placement : '';
     if (!placement) return Promise.resolve({ ok: false, reason: 'unconfigured' });
     if (busy) return Promise.resolve({ ok: false, reason: 'busy' });
@@ -52,7 +61,8 @@
     busy = true;
     return ad.show().then(function (result) {
       busy = false;
-      return { ok: !!(result && result.done !== false), reason: 'done' };
+      var finished = !!(result && result.done !== false);
+      return { ok: allowClose ? true : finished, reason: finished ? 'done' : 'close' };
     }, function (result) {
       busy = false;
       var skipped = result && result.done === false && !result.error;
@@ -60,10 +70,20 @@
     });
   }
 
+  function rewarded(placement) {
+    return show(placement, false);
+  }
+
+  function interstitial() {
+    return show('interstitial', true);
+  }
+
   window.CinderwellAds = {
     prepare: prepare,
     rewarded: rewarded,
-    configured: function (placement) { return !!blocks[placement]; },
+    interstitial: interstitial,
+    taskId: taskId,
+    configured: function (placement) { return placement === 'task' ? !!taskId() : !!blocks[placement]; },
     live: function () { return !!(blocks.revive || blocks.double); }
   };
 })();
