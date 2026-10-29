@@ -51,6 +51,7 @@
   function refreshCopy() {
     if (I18N) I18N.apply(document);
     if ($('btn-lang')) $('btn-lang').textContent = t('langName');
+    if (window.PlayMore) PlayMore.paint();
     if (screen === 'menu') paintMenu();
     else if (screen === 'shop') paintShop();
     else if (screen === 'growth') paintGrowth();
@@ -66,6 +67,7 @@
   function show(name) {
     if (I18N) I18N.apply(document);
     if ($('btn-lang')) $('btn-lang').textContent = t('langName');
+    if (window.PlayMore) PlayMore.paint();
     screen = name;
     ['menu', 'shop', 'help', 'pause', 'revive', 'end', 'growth', 'rally'].forEach(function (n) {
       $('screen-' + n).classList.toggle('hidden', n !== name);
